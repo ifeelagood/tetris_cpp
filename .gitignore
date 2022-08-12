@@ -1,4 +1,5 @@
 .vscode
 gmon.out
+gprof.out
 obj/*
 bin/*

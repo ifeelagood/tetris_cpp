@@ -5,7 +5,6 @@
 #include <vector>
 
 
-
 class PieceFactory
 {
 private:
@@ -15,7 +14,7 @@ private:
 
     void init();
 
-    Piece createPiece(const Shape& s, const Color& c, int x, int y) const;
+    Piece createPiece(const Shape& s, const Color& c) const;
 
     // fills bag without clearing, shuffling, or resizing
     void fillBag();
@@ -32,7 +31,7 @@ public:
 	~PieceFactory() {};
 
     // interface for getting the next piece
-    Piece getPiece(int x, int y);
+    Piece getPiece();
 
     // reset the bag
     void resetBag();

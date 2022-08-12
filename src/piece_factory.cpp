@@ -10,9 +10,9 @@ PieceFactory::PieceFactory()
     this->resetBag();
 }
 
-Piece PieceFactory::createPiece(const Shape& s, const Color& c, int x, int y) const
+Piece PieceFactory::createPiece(const Shape& s, const Color& c) const
 {
-	Piece p = Piece(x, y);
+	Piece p = Piece(5, 2);
     p.setColor(c);
     p.setPieceShape(s);
 
@@ -97,7 +97,7 @@ Piece PieceFactory::createPiece(const Shape& s, const Color& c, int x, int y) co
 	return p;
 }
 
-Piece PieceFactory::getPiece(int x, int y)
+Piece PieceFactory::getPiece()
 {
     // get shape and remove from
     Shape s = this->bag.back();
@@ -109,7 +109,7 @@ Piece PieceFactory::getPiece(int x, int y)
     Color c;
     c.r = 1.0f; c.g = 1.0f; c.b = 0.0f;
 
-    Piece p = this->createPiece(s, c, x, y);
+    Piece p = this->createPiece(s, c);
 
     return p;
 }

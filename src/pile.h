@@ -3,19 +3,25 @@
 #include <vector>
 #include "piece.h"
 
-typedef std::vector<std::vector<int>> Cells;
-
 
 class Pile
 {
 private:
-    int w,h;
+    unsigned int w,h;
     std::vector<std::vector<int>> pile;
 
-public:
-    Pile(const int w, const int h);
 
-    // getters
+public:
+    // CONSTRUCTORS
+    Pile() {};
+    Pile(const int w, const int h);
+    ~Pile() {};
+
+    // RESIZE FUNCTION
+    void resize(const int w, const int h);
+
+
+    // GETTERS
     int getPileWidth()  const { return this->w; }
     int getPileHeight() const { return this->h; }
     std::vector<std::vector<int>> getPile() const { return pile; };
@@ -27,4 +33,6 @@ public:
     void clear();
 
     bool isTileEmpty(const int x, const int y);
+
+
 };

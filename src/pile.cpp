@@ -2,13 +2,22 @@
 
 #include <iostream>
 
-Pile::Pile(const int w, const int h) : w(w), h(h)
+
+void Pile::resize(const int w, const int h)
 {
+    this->w = w;
+    this->h = h;
+
     this->pile.resize(h);
     for (int i = 0; i < h; i++)
     {
         this->pile[i].resize(w);
     }
+}
+
+Pile::Pile(const int w, const int h)
+{
+    this->resize(w, h);
 }
 
 

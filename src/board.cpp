@@ -1,16 +1,20 @@
-#include "gameboard.h"
+#include "board.h"
 #include "main.h"
 #include "das.h"
 #include "levels.h"
 #include <iostream>
 
 
-GameBoard::GameBoard(const int w, const int h) : w(w), h(h), pile(w, h)
+Board::Board(const int w, const int h)
 {
-    this->gravity = LevelGravity[this->level];
+    this->BoardWidth = w;
+    this->BoardHeight = h + this->HiddenRows;
+    this->pile.resize(this->BoardWidth, this->getBoardHeight());
+
+    this->resetGame();
 }
 
-void GameBoard::levelUp()
+void Board::levelUp()
 {
     this->level++;
     this->gravity = LevelGravity[this->level];
@@ -18,13 +22,13 @@ void GameBoard::levelUp()
     std::cout << "LEVEL UP! Level: " << this->level << '\n';
 }
 
-void GameBoard::update(Keys const &keys)
+void Board::update(Keys const &keys)
 {
     // increment timer and counter
     this->timer.tick();
     this->counter.tick();
 
-    // game logic
+    // spawn new piece + check for top out
     if (!this->hasPiece)
     {
         this->spawnPiece();
@@ -36,12 +40,13 @@ void GameBoard::update(Keys const &keys)
         }
     }
 
+    // IO FUNCTIONS
 
-    // move piece down / softdrop
+    // soft drop and move piece down
     if (keys.down & (counter.get() % 2 == 0)) { this->translatePiece(0, 1); }
     if (counter.get() % this->gravity == 0) { this->lowerActivePiece(); }
 
-    // rotate
+    // rotate pieces
     if (this->oldKeys.z == 0 && keys.z == 1) { this->rotatePieceRight(); }
     if (this->oldKeys.x == 0 && keys.x == 1) { this->rotatePieceLeft(); }
 
@@ -68,6 +73,7 @@ void GameBoard::update(Keys const &keys)
     // done processing input, so copy keys to this->oldKeys
     this->oldKeys = keys;
 
+
     // clear complete rows
     int cleared = 0; // 4 is tetris!
     for (int y = 0; y < this->pile.getPileHeight(); y++)
@@ -81,14 +87,16 @@ void GameBoard::update(Keys const &keys)
     if (cleared == 4) { std::cout << "TETRIS!!1!\n"; }
     this->linesCleared += cleared;
 
+    // check for a level up
     if (this->linesCleared > (this->level + 1) * 10) { this->levelUp(); }
 }
 
-void GameBoard::resetGame()
+void Board::resetGame()
 {
-    this->pile.clear(); // clear pile
-    this->pieceFactory.resetBag(); // reset bag
+    this->pile.clear();
+    this->pieceFactory.resetBag();
 
+    this->score = 0;
     this->linesCleared = 0;
     this->level = 0;
     this->gravity = LevelGravity[level];
@@ -97,7 +105,7 @@ void GameBoard::resetGame()
 }
 
 
-bool GameBoard::canTransform(Piece const &deltaPiece)
+bool Board::canTransform(Piece const &deltaPiece)
 {
     if (this->outOfBounds(deltaPiece))
     {
@@ -115,7 +123,7 @@ bool GameBoard::canTransform(Piece const &deltaPiece)
     // return (!this->outOfBounds(deltaPiece) & !this->checkPileCollision(deltaPiece)); // <- fucked
 }
 
-bool GameBoard::checkPileCollision(Piece const &p)
+bool Board::checkPileCollision(Piece const &p)
 {
 	auto s = p.getShape();
 
@@ -138,7 +146,7 @@ bool GameBoard::checkPileCollision(Piece const &p)
     return false;
 }
 
-bool GameBoard::outOfBounds(Piece const &p)
+bool Board::outOfBounds(Piece const &p)
 {
 	auto s = p.getShape();
 
@@ -154,14 +162,14 @@ bool GameBoard::outOfBounds(Piece const &p)
 
             if (s[dy][dx] == 1)
             {
-                if (x < 0 || x >= this->w || y >= this->h) { return true; }
+                if (x < 0 || x >= this->BoardWidth || y >= this->BoardHeight) { return true; }
             }
         }
     }
     return false;
 }
 
-bool GameBoard::translatePiece(const int dx, const int dy)
+bool Board::translatePiece(const int dx, const int dy)
 {
     Piece deltaPiece = this->piece;
 
@@ -171,7 +179,7 @@ bool GameBoard::translatePiece(const int dx, const int dy)
     else {  return false; }
 }
 
-bool GameBoard::rotatePieceRight()
+bool Board::rotatePieceRight()
 {
     Piece deltaPiece = this->piece;
 
@@ -181,7 +189,7 @@ bool GameBoard::rotatePieceRight()
     else { return false; }
 }
 
-bool GameBoard::rotatePieceLeft()
+bool Board::rotatePieceLeft()
 {
     Piece deltaPiece = this->piece;
 
@@ -191,7 +199,7 @@ bool GameBoard::rotatePieceLeft()
     else { return false; }
 }
 
-void GameBoard::lowerActivePiece()
+void Board::lowerActivePiece()
 {
     if (this->isLanded())
     {
@@ -204,7 +212,7 @@ void GameBoard::lowerActivePiece()
     }
 }
 
-bool GameBoard::isLanded()
+bool Board::isLanded()
 {
     // dont get delta piece as we need not apply the transformation
     auto pieceShape = this->piece.getShape();
@@ -230,21 +238,15 @@ bool GameBoard::isLanded()
     return false;
 }
 
-void GameBoard::spawnPiece()
+void Board::spawnPiece()
 {
-    Piece p = this->pieceFactory.getPiece(5, 2);
-
-    auto shape = p.getShape();
-
-    this->piece = p;
+    this->piece = this->pieceFactory.getPiece();
 }
 
-void GameBoard::calculateCellSize(const unsigned int screenWidth, const unsigned int screenHeight)
+void Board::calculateCellSize(const  int screenWidth, const  int screenHeight)
 {
-    unsigned int dw = screenWidth / this->w;
-    unsigned int dh = screenHeight / (this->h - 2);
-
-    std::printf("(%u,%u)\n", dw, dh);
+    int dw = screenWidth / this->BoardWidth;
+    int dh = screenHeight / (this->BoardHeight - this->HiddenRows);
 
     // choose smaller
     if (dw < dh) { this->cellSize = dw; }

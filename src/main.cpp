@@ -6,11 +6,11 @@
 #include <GL/glut.h>
 
 #include "main.h"
-#include "gameboard.h"
+#include "board.h"
 #include "frametimer.h"
 #include "keys.h"
 
-GameBoard game(BOARD_WIDTH, BOARD_HEIGHT+2); // 2 hidden rows
+Board game(BOARD_WIDTH, BOARD_HEIGHT); // 2 hidden rows
 Keys keys;
 
 // keyboard functions
@@ -100,9 +100,9 @@ void drawCell(int cellX, int cellY)
 
 void drawPile()
 {
-    for (int y = 0; y < game.getCellHeight(); y++)
+    for (int y = 0; y < game.getBoardHeight(); y++)
     {
-        for (int x = 0; x < game.getCellWidth(); x++)
+        for (int x = 0; x < game.getBoardWidth(); x++)
         {
             if (!game.isTileEmpty(x, y)) { drawCell(x, y); }
         }

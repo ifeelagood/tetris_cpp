@@ -52,22 +52,15 @@ void Board::update(Keys const &keys)
 
     // DAS
     // if left or right are down, but not both (as left and right translation do nothing)
-    if (keys.left != keys.right)
+    this->das.update(this->oldKeys, keys);
+    if (keys.left ^ keys.right)
     {
-        // update das ticker
-        if (keys.left)  { this->das.update(DASMode::LEFT); }
-        if (keys.right) { this->das.update(DASMode::RIGHT); }
-
         // if das is ready for movement
         if (this->das.isReady())
         {
             if (keys.left ) { this->translatePiece(-1, 0);  }
             if (keys.right) { this->translatePiece(1, 0);   }
         }
-    }
-    else
-    {
-        this->das.update(DASMode::NONE);
     }
 
     // done processing input, so copy keys to this->oldKeys

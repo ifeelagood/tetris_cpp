@@ -125,7 +125,6 @@ void PieceFactory::fillBag()
     this->bag.push_back(Shape::I);
     this->bag.push_back(Shape::J);
     this->bag.push_back(Shape::O);
-
 }
 
 void PieceFactory::shuffleBag()

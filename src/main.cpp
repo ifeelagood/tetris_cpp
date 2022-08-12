@@ -1,9 +1,12 @@
 #include <GL/freeglut_std.h>
+#include <cstdio>
 #include <iostream>
 
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
+#include <string>
+#include <type_traits>
 
 #include "main.h"
 #include "board.h"
@@ -39,29 +42,72 @@ void keyboardSpecialDown(int key, int x, int y)
     if (key == GLUT_KEY_RIGHT) { keys.right = 1; }
     if (key == GLUT_KEY_DOWN ) { keys.down  = 1; }
 }
+
+// window and display functions
+void windowSize(int w, int h)
+{
+    glViewport(0, 0, w, h);
+    glLoadIdentity();
+    gluOrtho2D(0, w, h, 0);
+
+}
+
+
 // drawing functions
 
-void helpimretarded()
+void drawString(int x, int y, void *font, const char* string)
+{
+    const unsigned char* c = reinterpret_cast<const unsigned char*>(string);
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2i(x, y);
+
+    glutBitmapString(font, c);
+}
+
+void drawUI()
 {
     const int w = glutGet(GLUT_WINDOW_WIDTH);
     const int h = glutGet(GLUT_WINDOW_HEIGHT);
 
-    int x1, y1, x2, y2;
-    x1 = 0; x2 = w;
-    y1 = 0; y2 = h;
+    unsigned int cellSize = game.getCellSize();
+    unsigned int score = game.getScore();
+    unsigned int level = game.getLevel();
+    float fps = game.getFPS();
 
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glVertex2i(x1, y1);
-        glVertex2i(x2, y1);
-        glVertex2i(x2, y2);
-        glVertex2i(x1, y2);
-    glEnd();
+    // convert to strings
+    std::string scoreStr = "Score: " + std::to_string(score);
+    std::string levelStr = "Level: " + std::to_string(level);
+    std::string fpsStr = "FPS: " + std::to_string(fps);
+
+    std::string message = game.getMessage().getText();
+
+    int x1, y1, x2, y2;
+    x1 = BOARD_WIDTH  * cellSize; x2 = w;
+    y1 = BOARD_HEIGHT * cellSize; y2 = h;
+
+    const int padX = 10;
+    const int padY = 30;
+
+    // switch viewport
+
+
+    drawString(x1+padX, padY, GLUT_BITMAP_TIMES_ROMAN_24, scoreStr.c_str());
+    drawString(x1+padX, padY*2, GLUT_BITMAP_TIMES_ROMAN_24, levelStr.c_str());
+
+
+    drawString(x1+(x2 - x1) / 2, padY, GLUT_BITMAP_TIMES_ROMAN_24, fpsStr.c_str());
+
+    drawString(x1+padX, h / 2, GLUT_BITMAP_HELVETICA_18, message.c_str());
+
+    // switch vieport back
+    windowSize(w, h);
+
 }
 
 void drawBackground()
 {
-    int cellSize = (int) game.getCellSize();
+    unsigned int cellSize = game.getCellSize();
 
     int x1, x2, y1, y2;
     x1 = 0; x2 = cellSize * BOARD_WIDTH;
@@ -97,6 +143,40 @@ void drawCell(int cellX, int cellY)
     glEnd();
 }
 
+void drawCellBorder(int cellX, int cellY)
+{
+    int cellSize = (int) game.getCellSize();
+
+    int x = cellX * cellSize;
+    int y = (cellY - 2) * cellSize;
+
+    int x1, x2, y1, y2;
+    x1 = x; x2 = x + cellSize;
+    y1 = y; y2 = y + cellSize;
+
+    int borderWidth = 1;
+
+    // draw border quad
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glBegin(GL_QUADS);
+        glVertex2i(x1, y1);
+        glVertex2i(x2, y1);
+        glVertex2i(x2, y2);
+        glVertex2i(x1, y2);
+    glEnd();
+
+    // draw acutal quad
+    x1 += borderWidth; x2 -= borderWidth;
+    y1 += borderWidth; y2 -= borderWidth;
+    glColor3f(1.0f, 0.0f, 1.0f);
+    glBegin(GL_QUADS);
+        glVertex2i(x1, y1);
+        glVertex2i(x2, y1);
+        glVertex2i(x2, y2);
+        glVertex2i(x1, y2);
+    glEnd();
+}
+
 
 void drawPile()
 {
@@ -104,7 +184,7 @@ void drawPile()
     {
         for (int x = 0; x < game.getBoardWidth(); x++)
         {
-            if (!game.isTileEmpty(x, y)) { drawCell(x, y); }
+            if (!game.isTileEmpty(x, y)) { drawCellBorder(x, y); }
         }
     }
 
@@ -113,28 +193,24 @@ void drawPile()
 void drawActivePiece()
 {
     Piece p = game.getPiece();
-    auto shape = p.getShape();
 
-    int px = p.getX();
-    int py = p.getY();
-
-
-    for (int y = 0; y < shape.size(); y++)
+    if (p.getPieceShape() != Shape::Empty)
     {
-        for (int x = 0; x < shape[y].size(); x++)
+        auto shape = p.getShape();
+
+        int px = p.getX();
+        int py = p.getY();
+
+
+        for (int y = 0; y < shape.size(); y++)
         {
-            // std::cout << shape[y][x];
-            if (shape[y][x] > 0) { drawCell(px+x, py+y); }
+            for (int x = 0; x < shape[y].size(); x++)
+            {
+                // std::cout << shape[y][x];
+                if (shape[y][x] > 0) { drawCellBorder(px+x, py+y); }
+            }
         }
     }
-}
-
-// window and display functions
-void windowSize(int w, int h)
-{
-    glViewport(0, 0, w, h);
-    glLoadIdentity();
-    gluOrtho2D(0, w, h, 0);
 }
 
 void resize(const int w, const int h)
@@ -159,6 +235,7 @@ void display()
     drawBackground();
     drawPile();
     drawActivePiece();
+    drawUI();
 
     game.update(keys);
 

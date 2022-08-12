@@ -26,3 +26,6 @@
 // will reset all the way back to zero. In effect, pressing and holding down the
 // left button will first move the piece 1 column, then after 16 frames it moves
 // another column, then it will move a column every 6 frames.
+
+
+// https://github.com/Elanif/NESTRIS/blob/4b236287f5d6791c404aea4b0417e2b36d94ac75/nestris%20rules.txt

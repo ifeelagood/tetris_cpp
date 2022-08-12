@@ -32,6 +32,7 @@ public:
 
     // interface for getting the next piece
     Piece getPiece();
+    Piece getEmpty();
 
     // reset the bag
     void resetBag();

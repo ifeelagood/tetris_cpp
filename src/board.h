@@ -7,6 +7,7 @@
 #include "keys.h"
 #include "das.h"
 #include "levels.h"
+#include "ui.h"
 
 
 
@@ -21,8 +22,9 @@ private:
     Piece piece;
     FrameTimer timer;
     FrameCounter counter;
-    Keys oldKeys; // store to compare for single activation
+    Keys oldKeys; // store to compare for press
     DAS das;
+    Message msg;
 
     // game variables
     unsigned int level = 0;
@@ -31,13 +33,16 @@ private:
     unsigned int linesCleared;
 
     // dimensions and sizes
+    const unsigned int HiddenRows = 2;
     unsigned int BoardWidth, BoardHeight;
-    unsigned int HiddenRows = 2;
     unsigned int cellSize;
 
     // state variables
     bool hasPiece = false;
     bool quit = false;
+
+    // ARE / entry delay
+    unsigned int ARE = 0;
 
     // ##### FUNCTIONS #####
 
@@ -57,6 +62,9 @@ private:
     void resetGame();
     void levelUp();
     void spawnPiece();
+    void calculateARE(int row);
+
+
 
 public:
     // CONSTRUCTORS
@@ -72,8 +80,13 @@ public:
     Piece getPiece() const { return this->piece; } // return current playing piece
     unsigned int getCellSize() const { return this->cellSize; }
 
-    // MISC
+    unsigned int getScore() const { return this->score; }
+    unsigned int getLevel() const { return this->level; }
 
+    float getFPS() const { return this->timer.getFPS(); }
+    Message getMessage() const { return this->msg; }
+
+    // MISC
     bool isTileEmpty(int x, int y) { return this->pile.isTileEmpty(x, y); };
 
     void calculateCellSize(const int screenWidth, const int screenHeight);

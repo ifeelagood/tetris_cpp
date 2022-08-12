@@ -2,6 +2,7 @@
 #include "main.h"
 #include "das.h"
 #include "levels.h"
+#include "piece.h"
 #include <iostream>
 
 
@@ -19,7 +20,7 @@ void Board::levelUp()
     this->level++;
     this->gravity = LevelGravity[this->level];
 
-    std::cout << "LEVEL UP! Level: " << this->level << '\n';
+    this->msg.set("LEVEL UP", 10);
 }
 
 void Board::update(Keys const &keys)
@@ -29,28 +30,25 @@ void Board::update(Keys const &keys)
     this->counter.tick();
 
     // spawn new piece + check for top out
-    if (!this->hasPiece)
-    {
-        this->spawnPiece();
-        this->hasPiece = true;
+    if (this->ARE) { this->ARE--; } // decrement are until zero
+    else if (this->piece.getPieceShape() == Shape::Empty) { this->spawnPiece(); }
 
-        if (this->checkPileCollision(this->piece)) // TOPPED OUT
-        {
-            this->resetGame();
-        }
-    }
 
     // IO FUNCTIONS
 
-    // soft drop and move piece down
-    if (keys.down & (counter.get() % 2 == 0)) { this->translatePiece(0, 1); }
-    if (counter.get() % this->gravity == 0) { this->lowerActivePiece(); }
+    // CANNOT CHARGE SOFTDROP/GRAVITY/ROTATION WHILE NO PIECE
+    if (this->piece.getPieceShape() != Shape::Empty)
+    {
+        // soft drop and move piece down
+        if (keys.down & (counter.get() % 2 == 0))    { this->lowerActivePiece(); score++; } // TODO fix this scoring
+        else if (counter.get() % this->gravity == 0) { this->lowerActivePiece(); }
 
-    // rotate pieces
-    if (this->oldKeys.z == 0 && keys.z == 1) { this->rotatePieceRight(); }
-    if (this->oldKeys.x == 0 && keys.x == 1) { this->rotatePieceLeft(); }
+        if (this->oldKeys.z == 0 && keys.z == 1) { this->rotatePieceRight(); }
+        if (this->oldKeys.x == 0 && keys.x == 1) { this->rotatePieceLeft(); }
 
-    // DAS
+    }
+
+    // DAS, however, can be charged during ARE
     // if left or right are down, but not both (as left and right translation do nothing)
     this->das.update(this->oldKeys, keys);
     if (keys.left ^ keys.right)
@@ -66,7 +64,6 @@ void Board::update(Keys const &keys)
     // done processing input, so copy keys to this->oldKeys
     this->oldKeys = keys;
 
-
     // clear complete rows
     int cleared = 0; // 4 is tetris!
     for (int y = 0; y < this->pile.getPileHeight(); y++)
@@ -77,11 +74,17 @@ void Board::update(Keys const &keys)
             cleared++;
         }
     }
-    if (cleared == 4) { std::cout << "TETRIS!!1!\n"; }
+    if (cleared == 4) { this->msg.set("TETRIS", 5); }
     this->linesCleared += cleared;
+
+    // update score
+    this->score += LineScore[cleared] * (this->level + 1);
 
     // check for a level up
     if (this->linesCleared > (this->level + 1) * 10) { this->levelUp(); }
+
+    // update status
+    this->msg.tick();
 }
 
 void Board::resetGame()
@@ -197,7 +200,8 @@ void Board::lowerActivePiece()
     if (this->isLanded())
     {
         pile.addPiece(this->piece);
-        hasPiece = false;
+        calculateARE(this->piece.getY()); // TODO fix this shit. this gets y value for entire piece.
+        this->piece.setPieceShape(Shape::Empty); // dont actually clear shape, just set it as empty
     }
     else
     {
@@ -244,4 +248,12 @@ void Board::calculateCellSize(const  int screenWidth, const  int screenHeight)
     // choose smaller
     if (dw < dh) { this->cellSize = dw; }
     else { this->cellSize = dh; }
+}
+
+void Board::calculateARE(int row)
+{
+    // from tetris wiki
+    // delay is 10 for bottom 2 rows, then additional 2 for each 4 rows up.
+    int deltaRow = this->BoardHeight - row + 1;
+    this->ARE = 10 + (((deltaRow - 2) / 4) * 2);
 }

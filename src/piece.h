@@ -24,7 +24,7 @@ private:
 
 public:
     // constructors
-    Piece() {};
+    Piece() : id(generateId()) {};
     Piece(const int x, const int y) : id(generateId()), x(x), y(y) {};
 
     // operator assignment

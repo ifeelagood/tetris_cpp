@@ -26,3 +26,10 @@ static std::map<unsigned int, unsigned int>LevelGravity = {
     {19, 2},
     {20, 2}
 };
+
+static std::map<unsigned int, unsigned int>LineScore = {
+    {1, 40},
+    {2, 100},
+    {3, 300},
+    {4, 1200}
+};

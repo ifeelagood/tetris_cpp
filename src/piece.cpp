@@ -11,6 +11,7 @@ Piece& Piece::operator=(Piece const &other)
         this->x     = other.x;
         this->y     = other.y;
         this->shape = other.shape;
+        this->pieceShape = other.pieceShape;
     }
 
     return *this;

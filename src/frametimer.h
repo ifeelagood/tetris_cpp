@@ -21,8 +21,8 @@ class FrameTimer
 private:
     int t1;
     int t2;
-    float deltaTime;
-    float fps;
+    double deltaTime;
+    double fps;
 
     void update();
 
@@ -31,6 +31,6 @@ public:
     void tick();
 
     // gets the elapsed time in seconds since the last frame and the current one
-    float getDeltaTime() const { return this->deltaTime; }
-    float getFPS() const { return this->fps; }
+    double getDeltaTime() const { return this->deltaTime; }
+    double getFPS() const { return this->fps; }
 };

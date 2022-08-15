@@ -12,10 +12,10 @@ DEPFILES=$(patsubst src/%.cpp,obj/%.d,$(CPPFILES))
 BINARY=bin/tetris
 BINFLAGS=-lGL -lGLU -lglut
 
-
 all: $(BINARY)
 debug: CXXFLAGS+= -pg
 debug: $(BINARY)
+
 
 $(BINARY): $(OBJECTS)
 	mkdir -p $(@D)

@@ -33,9 +33,9 @@ void DAS::update(Keys const &oldKeys, Keys const &newKeys)
     bool wasActive = (oldLeft ^ oldRight);
     bool isActive  = (newLeft ^ newRight);
 
-    if (oldDown & !newDown) { this->start(); } // down->not
-    else if (!oldDown & newDown) { this->stop(); } // not->down
-    else if (!wasActive & isActive) { this->start(); } // stopped->active
+    //if (oldDown & !newDown) { this->start(); } // down->not
+    //else if (!oldDown & newDown) { this->stop(); } // not->down
+    if (!wasActive & isActive) { this->start(); } // stopped->active
     else if (wasActive & !isActive) { this->stop(); } // active->stopped
     else if (wasActive & isActive) // active -> active
     {

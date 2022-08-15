@@ -69,7 +69,7 @@ private:
 public:
     // CONSTRUCTORS
     Board(const int w, const int h);
-    ~Board() {};
+    // ~Board() {};
 
     // MAIN GAME LOOP
     void update(Keys const &keys);

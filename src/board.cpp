@@ -31,7 +31,11 @@ void Board::update(Keys const &keys)
 
     // spawn new piece + check for top out
     if (this->ARE) { this->ARE--; } // decrement are until zero
-    else if (this->piece.getPieceShape() == Shape::Empty) { this->spawnPiece(); }
+    else if (this->piece.getPieceShape() == Shape::Empty)
+    {
+        this->spawnPiece();
+        if (this->checkPileCollision(this->piece)) { this->msg.set("GAME OVER", 10); this->resetGame(); } // weve topped out
+    }
 
 
     // IO FUNCTIONS

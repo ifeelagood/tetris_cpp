@@ -1,7 +1,9 @@
-#include <GL/freeglut_std.h>
 #include <cstdio>
 #include <iostream>
+#include <chrono>
+#include <thread>
 
+#include <GL/freeglut_std.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
@@ -12,6 +14,7 @@
 #include "board.h"
 #include "frametimer.h"
 #include "keys.h"
+#include "levels.h"
 
 Board game(BOARD_WIDTH, BOARD_HEIGHT); // 2 hidden rows
 Keys keys;
@@ -98,7 +101,7 @@ void drawUI()
 
     drawString(x1+(x2 - x1) / 2, padY, GLUT_BITMAP_TIMES_ROMAN_24, fpsStr.c_str());
 
-    drawString(x1+padX, h / 2, GLUT_BITMAP_HELVETICA_18, message.c_str());
+    drawString(x1+50, h / 2, GLUT_BITMAP_HELVETICA_18, message.c_str());
 
     // switch vieport back
     windowSize(w, h);
@@ -112,7 +115,6 @@ void drawBackground()
     int x1, x2, y1, y2;
     x1 = 0; x2 = cellSize * BOARD_WIDTH;
     y1 = 0; y2 = cellSize * BOARD_HEIGHT;
-
 
     glColor3f(0.3f, 0.3f, 0.3);
     glBegin(GL_QUADS);
@@ -134,7 +136,10 @@ void drawCell(int cellX, int cellY)
     x1 = x; x2 = x + cellSize;
     y1 = y; y2 = y + cellSize;
 
-    glColor3f(1.0f, 0.0f, 1.0f);
+    float r,g,b;
+    getLevelColor(game.getLevel(), r, g, b);
+
+    glColor3f(r, g, b);
     glBegin(GL_QUADS);
         glVertex2i(x1, y1);
         glVertex2i(x2, y1);
@@ -165,10 +170,15 @@ void drawCellBorder(int cellX, int cellY)
         glVertex2i(x1, y2);
     glEnd();
 
+
     // draw acutal quad
     x1 += borderWidth; x2 -= borderWidth;
     y1 += borderWidth; y2 -= borderWidth;
-    glColor3f(1.0f, 0.0f, 1.0f);
+
+    float r,g,b;
+    getLevelColor(game.getLevel(), r, g, b);
+
+    glColor3f(r, g, b);
     glBegin(GL_QUADS);
         glVertex2i(x1, y1);
         glVertex2i(x2, y1);
@@ -219,10 +229,34 @@ void resize(const int w, const int h)
     game.calculateCellSize(w, h);
 }
 
+
+std::chrono::system_clock::time_point a = std::chrono::system_clock::now();
+std::chrono::system_clock::time_point b = std::chrono::system_clock::now();
+
+void fpsLimit()
+{
+    // ###########THE GREAT FPS LIMITER##########################################################################
+    a = std::chrono::system_clock::now();                                                                    // #
+    std::chrono::duration<double, std::milli> work_time = a - b;                                             // #
+                                                                                                             // #
+    double target = ((1.0 / (double) FPS) * 1000.0);                                                         // #
+    if (work_time.count() < target)                                                                          // #
+    {                                                                                                        // #
+        std::chrono::duration<double, std::milli> delta_ms(target - work_time.count());
+        auto delta_ms_duration = std::chrono::duration_cast<std::chrono::milliseconds>(delta_ms);
+        std::this_thread::sleep_for(std::chrono::milliseconds(delta_ms_duration.count()));
+    }
+
+    b = std::chrono::system_clock::now();
+    std::chrono::duration<double, std::milli> sleep_time = b - a;
+    // #########################################################################################################
+}
+
 // display function
 void display()
 {
-    //get width and height
+    fpsLimit();
+
     const int width = glutGet(GLUT_WINDOW_WIDTH);
     const int height = glutGet(GLUT_WINDOW_HEIGHT);
 
@@ -231,7 +265,6 @@ void display()
 
     windowSize(width, height);
 
-    // drawing
     drawBackground();
     drawPile();
     drawActivePiece();
@@ -240,13 +273,11 @@ void display()
     game.update(keys);
 
     glutSwapBuffers();
-}
 
-// framerate limiter/enforcer
-void glutTimer(int) {
-    glutTimerFunc(1000.0f/FPS, glutTimer, 0);
+    // printf("Time: %f \n", (work_time + sleep_time).count());
     glutPostRedisplay();
 }
+
 
 
 // initialisation
@@ -258,7 +289,7 @@ void init(int* pargc, char** argv)
     glutCreateWindow("Tetris");
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    // set glut functions
+    // set glut callback functions
     glutDisplayFunc(display);
     glutKeyboardUpFunc(keyboardNormalUp);
     glutSpecialUpFunc(keyboardSpecialUp);
@@ -266,14 +297,11 @@ void init(int* pargc, char** argv)
     glutSpecialFunc(keyboardSpecialDown);
     glutReshapeFunc(resize);
 
-    // start framerate limiter
-    glutTimer(0);
-
     std::printf("Initialised GLUT\n");
 
     // get and print rendering device
     const char * gl_renderer = (const char *) glGetString(GL_RENDERER);
-    std::printf("Using device: %s\n", gl_renderer);
+    std::printf("Using device: '%s\n'", gl_renderer);
 
     // calculate tile size
     game.calculateCellSize(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -285,6 +313,6 @@ int main(int argc, char** argv)
 {
     init(&argc, argv);
 
-    // start glut
+    // start glut display callback function
     glutMainLoop();
 }

@@ -5,7 +5,7 @@
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
 
-#define FPS 60.0f
+#define FPS 60.0
 
 // ##### NOTES #####
 // https://tetris.fandom.com/wiki/Tetris_(NES,_Nintendo)

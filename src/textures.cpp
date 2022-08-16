@@ -132,8 +132,108 @@ void TileTexture::generateTextures()
     }
 
     // now free raw data and pallete data
-    // stbi_image_free(this->rawData);
-    // this->deallocatePallete();
-    // isFree = true;
+    stbi_image_free(this->rawData);
+    this->deallocatePallete();
+    isFree = true;
 
+}
+
+// charset
+
+CharsetTextures::CharsetTextures()
+{
+    // resize charset vector and allocate
+    this->charset.resize(this->total);
+    for (int i = 0; i < this->total; i++) { this->charset[i] = new unsigned char[w * h * bpp]; }
+
+
+    // load raw data
+    int raw_w, raw_h, raw_bpp;
+    this->rawData = stbi_load("res/charset.png", &raw_w, &raw_h, &raw_bpp, STBI_rgb);
+
+    this->splitRawData();
+}
+
+// split 1D array of pixels into individual 1D arrays
+void CharsetTextures::splitRawData()
+{
+    const int rowLength = bpp * total * w;
+
+    for (int i = 0; i < this->total; i++)
+    {
+        this->charset[i] = new unsigned char[w * h * bpp];
+
+        unsigned char* src_ptr = this->rawData;
+        unsigned char* dst_ptr = this->charset[i];
+
+        // move pointer to first pixel of character
+        src_ptr += i * (w * bpp);
+
+        for (int y = 0; y < h; y++)
+        {
+            memcpy(dst_ptr, src_ptr, w * bpp);
+
+            src_ptr += bpp * total * w;
+            dst_ptr += bpp * w;
+        }
+    }
+
+}
+
+void CharsetTextures::generateTextures()
+{
+    // resize texture vector
+    this->textures.resize(this->total);
+
+    for (int i = 0; i < this->total; i++)
+    {
+        unsigned char * data = this->charset[i];
+
+        // generate with opengl
+        glGenTextures(1, &this->textures[i]);
+        glBindTexture(GL_TEXTURE_2D, this->textures[i]);
+
+        // IMPORTANT texture filtering
+        // if we use (why we?) bilinear filtering, it'll look like shit, so just nearest
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER); // we dont want any of that GL_REPEAT bs
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // dont bother with mipmaps
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // generate texture
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+
+        // unbind texture
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        delete[] this->charset[i];
+    }
+
+    stbi_image_free(this->rawData);
+}
+
+void createBGTexture(unsigned int &texture)
+{
+    int w, h, bpp;
+    unsigned char * data = stbi_load("res/background.png", &w, &h, &bpp, STBI_rgb);
+
+
+    // generate with opengl
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // IMPORTANT texture filtering
+    // if we use (why we?) bilinear filtering, it'll look like shit, so just nearest
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER); // we dont want any of that GL_REPEAT bs
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // dont bother with mipmaps
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    // generate texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+
+    // unbind texture
+    glBindTexture(GL_TEXTURE_2D, 0);
 }

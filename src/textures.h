@@ -36,3 +36,27 @@ public:
     unsigned int getTexture(unsigned int row, unsigned int col)  { return this->textures[row][col]; }
 
 };
+
+class CharsetTextures
+{
+private:
+    const unsigned int total = 36; // 0-9 a-z
+    const unsigned int w = 8; // dimensions of each image
+    const unsigned int h = 8;
+    const unsigned int bpp = 3; // bits per pixel
+
+    unsigned char * rawData; // raw charmap data
+    std::vector<unsigned char *> charset; // individual character data
+    std::vector<unsigned int> textures; // opengl textures
+
+    void splitRawData();
+
+public:
+    CharsetTextures();
+    ~CharsetTextures() {};
+
+    void generateTextures();
+    unsigned int getTexture(unsigned int i) { return this->textures[i]; }
+};
+
+void createBGTexture(unsigned int &texture);

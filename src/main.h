@@ -1,11 +1,24 @@
 #pragma once
 
-#define WINDOW_WIDTH 1000
-#define WINDOW_HEIGHT 1000
+
+#define WINDOW_SCALE 4
+#define WINDOW_WIDTH 256 * WINDOW_SCALE
+#define WINDOW_HEIGHT 224 * WINDOW_SCALE
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
+#define TILE_WIDTH 8 * WINDOW_SCALE
+
+// playfield bounds
+#define PF_X1 95 * WINDOW_SCALE + WINDOW_SCALE
+#define PF_X2 PF_X1 + TILE_WIDTH * 10
+#define PF_Y1 39 * WINDOW_SCALE + WINDOW_SCALE
+#define PF_Y2 PF_Y1 + TILE_WIDTH * 20
+
+#define ASPECT_WIDTH 8
+#define ASPECT_HEIGHT 7
 
 #define FPS 60.0
+
 
 // ##### NOTES #####
 // https://tetris.fandom.com/wiki/Tetris_(NES,_Nintendo)

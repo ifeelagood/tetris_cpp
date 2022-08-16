@@ -22,8 +22,9 @@ Board game(BOARD_WIDTH, BOARD_HEIGHT); // 2 hidden rows
 Keys keys;
 
 
-std::vector<std::vector<unsigned int>> textures;
 TileTexture tileTex;
+CharsetTextures charTex;
+unsigned int bgTex;
 
 // keyboard functions
 
@@ -95,76 +96,30 @@ void drawString(int x, int y, void *font, const char* string)
 
 void drawUI()
 {
-    const int w = glutGet(GLUT_WINDOW_WIDTH);
-    const int h = glutGet(GLUT_WINDOW_HEIGHT);
-
-    unsigned int cellSize = game.getCellSize();
-    unsigned int score = game.getScore();
-    unsigned int level = game.getLevel();
-    float fps = game.getFPS();
-
-    // convert to strings
-    std::string scoreStr = "Score: " + std::to_string(score);
-    std::string levelStr = "Level: " + std::to_string(level);
-    std::string fpsStr = "FPS: " + std::to_string(fps);
-
-    std::string message = game.getMessage().getText();
-
-    int x1, y1, x2, y2;
-    x1 = BOARD_WIDTH  * cellSize; x2 = w;
-    y1 = BOARD_HEIGHT * cellSize; y2 = h;
-
-    const int padX = 10;
-    const int padY = 30;
-
-    // switch viewport
-
-
-    drawString(x1+padX, padY, GLUT_BITMAP_TIMES_ROMAN_24, scoreStr.c_str());
-    drawString(x1+padX, padY*2, GLUT_BITMAP_TIMES_ROMAN_24, levelStr.c_str());
-
-
-    drawString(x1+(x2 - x1) / 2, padY, GLUT_BITMAP_TIMES_ROMAN_24, fpsStr.c_str());
-
-    drawString(x1+50, h / 2, GLUT_BITMAP_HELVETICA_18, message.c_str());
-
-    // switch vieport back
-    windowSize(w, h);
 
 }
 
 void drawBackground()
 {
-    unsigned int cellSize = game.getCellSize();
-
     int x1, x2, y1, y2;
-    x1 = 0; x2 = cellSize * BOARD_WIDTH;
-    y1 = 0; y2 = cellSize * BOARD_HEIGHT;
+    x1 = 0; x2 = WINDOW_WIDTH;
+    y1 = 0; y2 = WINDOW_HEIGHT;
 
-    glColor3f(0.3f, 0.3f, 0.3);
-    glBegin(GL_QUADS);
-        glVertex2i(x1, y1);
-        glVertex2i(x2, y1);
-        glVertex2i(x2, y2);
-        glVertex2i(x1, y2);
-    glEnd();
+    drawTexturedQuad(bgTex, x1, x2, y1, y2);
 }
 
 void drawCell(int cellX, int cellY, int variation)
 {
-    int cellSize = (int) game.getCellSize();
+    int cellSize = TILE_WIDTH;
 
     int x = cellX * cellSize;
     int y = (cellY - 2) * cellSize;
 
     int x1, x2, y1, y2;
-    x1 = x; x2 = x + cellSize;
-    y1 = y; y2 = y + cellSize;
-
+    x1 = x + PF_X1; x2 = x1 + cellSize;
+    y1 = y + PF_Y1; y2 = y1 + cellSize;
 
     unsigned int color = game.getLevel() % 9; // 10 colors in the pallete
-
-
     unsigned int texture = tileTex.getTexture(color, variation);
 
     drawTexturedQuad(texture, x1, x2, y1, y2);
@@ -209,8 +164,9 @@ void drawActivePiece()
 
 void resize(const int w, const int h)
 {
-    windowSize(w, h);
-    game.calculateCellSize(w, h);
+    glutReshapeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
+    // windowSize(w, h);
+    // game.calculateCellSize(w, h);
 }
 
 
@@ -253,6 +209,8 @@ void display()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
+    windowSize(width, height);
+
     drawBackground();
     drawPile();
     drawActivePiece();
@@ -294,8 +252,10 @@ void init(int* pargc, char** argv)
     // calculate tile size
     game.calculateCellSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
+    // generate textures
     tileTex.generateTextures();
-
+    charTex.generateTextures();
+    createBGTexture(bgTex);
 }
 
 // main

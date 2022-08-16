@@ -34,35 +34,3 @@ static std::map<unsigned int, unsigned int>LineScore = {
     {3, 300},
     {4, 1200}
 };
-
-
-class ColorRGB
-{
-public:
-    float r,g,b;
-    ColorRGB(float r, float g, float b) : r(r), g(g), b(b) {};
-    ~ColorRGB() {};
-};
-
-// level % 6 to get color
-
-static inline void getLevelColor(unsigned int level, float &r, float &g, float &b)
-{
-    unsigned int i = level % 6;
-
-    switch(i)
-    {
-        case(0):
-            r = 1.0f; g = 0.0f; b = 0.0f; break;
-        case(1):
-            r = 0.0f; g = 1.0f; b = 0.0f; break;
-        case(2):
-            r = 0.0f; g = 0.0f; b = 1.0f; break;
-        case(3):
-            r = 1.0f; g = 1.0f; b = 0.0f; break;
-        case(4):
-            r = 1.0f; g = 0.0f; b = 1.0f; break;
-        case(5):
-            r = 0.0f; g = 1.0f; b = 1.0f; break;
-    }
-}

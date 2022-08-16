@@ -16,14 +16,17 @@ Piece PieceFactory::createPiece(const Shape& s, const Color& c) const
     p.setColor(c);
     p.setPieceShape(s);
 
+    // 1 is first texture variant, 2 is second texture variant
+    // 1 = outline, 2 = light, 3 = dark
+    // as nes tetris has the same variants for piece types
     switch (s)
     {
         case Shape::L:
             p.setShape
             ({
                 { 0,0,0 },
-                { 1,1,1 },
-                { 1,0,0 }
+                { 2,2,2 },
+                { 2,0,0 }
             });
             p.translate(-1, -1);
             break;
@@ -32,8 +35,8 @@ Piece PieceFactory::createPiece(const Shape& s, const Color& c) const
             p.setShape
             ({
                 {0,0,0},
-                {1,1,1},
-                {0,0,1}
+                {3,3,3},
+                {0,0,3}
             });
             p.translate(-1, -1);
             break;
@@ -53,8 +56,8 @@ Piece PieceFactory::createPiece(const Shape& s, const Color& c) const
             p.setShape
             ({
                 { 0,0,0 },
-                { 0,1,1 },
-                { 1,1,0 }
+                { 0,3,3 },
+                { 3,3,0 }
             });
             p.translate(-1, -1);
             break;
@@ -63,8 +66,8 @@ Piece PieceFactory::createPiece(const Shape& s, const Color& c) const
             p.setShape
             ({
                 { 0,0,0 },
-                { 1,1,0 },
-                { 0,1,1 }
+                { 2,2,0 },
+                { 0,2,2 }
             });
             break;
 

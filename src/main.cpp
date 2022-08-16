@@ -15,9 +15,15 @@
 #include "frametimer.h"
 #include "keys.h"
 #include "levels.h"
+#include "stb_image.h"
+#include "textures.h"
 
 Board game(BOARD_WIDTH, BOARD_HEIGHT); // 2 hidden rows
 Keys keys;
+
+
+std::vector<std::vector<unsigned int>> textures;
+TileTexture tileTex;
 
 // keyboard functions
 
@@ -26,6 +32,7 @@ void keyboardNormalUp(unsigned char key, int x, int y)
     if (key == 'z') { keys.z = 0; }
     if (key == 'x') { keys.x = 0; }
 }
+
 void keyboardNormalDown(unsigned char key, int x, int y)
 {
     if (key == 'z') { keys.z = 1; }
@@ -50,13 +57,31 @@ void keyboardSpecialDown(int key, int x, int y)
 void windowSize(int w, int h)
 {
     glViewport(0, 0, w, h);
-    glLoadIdentity();
-    gluOrtho2D(0, w, h, 0);
-
+    // glLoadIdentity();
+    // gluOrtho2D(0, w, h, 0);
 }
 
 
 // drawing functions
+
+void drawTexturedQuad(unsigned int &texture, int x1, int x2, int y1, int y2)
+{
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_QUADS);
+        glTexCoord2i(0, 0); glVertex2i(x1, y1);
+        glTexCoord2i(1, 0); glVertex2i(x2, y1);
+        glTexCoord2i(1, 1); glVertex2i(x2, y2);
+        glTexCoord2i(0, 1); glVertex2i(x1, y2);
+    glEnd();
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+
+}
+
 
 void drawString(int x, int y, void *font, const char* string)
 {
@@ -125,7 +150,7 @@ void drawBackground()
     glEnd();
 }
 
-void drawCell(int cellX, int cellY)
+void drawCell(int cellX, int cellY, int variation)
 {
     int cellSize = (int) game.getCellSize();
 
@@ -136,68 +161,27 @@ void drawCell(int cellX, int cellY)
     x1 = x; x2 = x + cellSize;
     y1 = y; y2 = y + cellSize;
 
-    float r,g,b;
-    getLevelColor(game.getLevel(), r, g, b);
 
-    glColor3f(r, g, b);
-    glBegin(GL_QUADS);
-        glVertex2i(x1, y1);
-        glVertex2i(x2, y1);
-        glVertex2i(x2, y2);
-        glVertex2i(x1, y2);
-    glEnd();
+    unsigned int color = game.getLevel() % 9; // 10 colors in the pallete
+
+
+    unsigned int texture = tileTex.getTexture(color, variation);
+
+    drawTexturedQuad(texture, x1, x2, y1, y2);
+
 }
-
-void drawCellBorder(int cellX, int cellY)
-{
-    int cellSize = (int) game.getCellSize();
-
-    int x = cellX * cellSize;
-    int y = (cellY - 2) * cellSize;
-
-    int x1, x2, y1, y2;
-    x1 = x; x2 = x + cellSize;
-    y1 = y; y2 = y + cellSize;
-
-    int borderWidth = 1;
-
-    // draw border quad
-    glColor3f(0.0f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glVertex2i(x1, y1);
-        glVertex2i(x2, y1);
-        glVertex2i(x2, y2);
-        glVertex2i(x1, y2);
-    glEnd();
-
-
-    // draw acutal quad
-    x1 += borderWidth; x2 -= borderWidth;
-    y1 += borderWidth; y2 -= borderWidth;
-
-    float r,g,b;
-    getLevelColor(game.getLevel(), r, g, b);
-
-    glColor3f(r, g, b);
-    glBegin(GL_QUADS);
-        glVertex2i(x1, y1);
-        glVertex2i(x2, y1);
-        glVertex2i(x2, y2);
-        glVertex2i(x1, y2);
-    glEnd();
-}
-
 
 void drawPile()
 {
-    for (int y = 0; y < game.getBoardHeight(); y++)
+    auto shape = game.getPileShape();
+
+    for (int y = 0; y < shape.size(); y++)
     {
-        for (int x = 0; x < game.getBoardWidth(); x++)
+        for (int x = 0; x < shape[y].size(); x++)
         {
-            if (!game.isTileEmpty(x, y)) { drawCellBorder(x, y); }
+            if (shape[y][x] > 0) { drawCell(x, y, shape[y][x] - 1); }
         }
     }
-
 }
 
 void drawActivePiece()
@@ -217,7 +201,7 @@ void drawActivePiece()
             for (int x = 0; x < shape[y].size(); x++)
             {
                 // std::cout << shape[y][x];
-                if (shape[y][x] > 0) { drawCellBorder(px+x, py+y); }
+                if (shape[y][x] > 0) { drawCell(px+x, py+y, shape[y][x]-1); }
             }
         }
     }
@@ -248,7 +232,7 @@ void fpsLimit()
     }
 
     b = std::chrono::system_clock::now();
-    std::chrono::duration<double, std::milli> sleep_time = b - a;
+    // std::chrono::duration<double, std::milli> sleep_time = b - a;
     // #########################################################################################################
 }
 
@@ -263,7 +247,11 @@ void display()
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    windowSize(width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, width, height, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
     drawBackground();
     drawPile();
@@ -285,7 +273,7 @@ void init(int* pargc, char** argv)
 {
     // initialise glut
     glutInit(pargc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutCreateWindow("Tetris");
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -305,6 +293,8 @@ void init(int* pargc, char** argv)
 
     // calculate tile size
     game.calculateCellSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    tileTex.generateTextures();
 
 }
 

@@ -137,7 +137,7 @@ bool Board::checkPileCollision(Piece const &p)
             int x = dx + px;
             int y = dy + py;
 
-            if (s[dy][dx] == 1 && this->pile.getPile()[y][x] != 0)
+            if (s[dy][dx] > 0 && this->pile.getPile()[y][x] != 0)
             {
                 return true;
             }
@@ -160,7 +160,7 @@ bool Board::outOfBounds(Piece const &p)
             int x = dx + px;
             int y = dy + py;
 
-            if (s[dy][dx] == 1)
+            if (s[dy][dx] > 0)
             {
                 if (x < 0 || x >= this->BoardWidth || y >= this->BoardHeight) { return true; }
             }
@@ -229,7 +229,7 @@ bool Board::isLanded()
             int x = sx + px; // global x coord
             int y = sy + py; // global y coord
 
-            if (pieceShape[sy][sx] == 1)
+            if (pieceShape[sy][sx] > 0)
             {
                 if (!this->pile.isTileEmpty(x, y+1)) { return true; }
             }

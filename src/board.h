@@ -88,6 +88,7 @@ public:
 
     // MISC
     bool isTileEmpty(int x, int y) { return this->pile.isTileEmpty(x, y); };
+    std::vector<std::vector<int>> getPileShape() { return this->pile.getPile(); }
 
     void calculateCellSize(const int screenWidth, const int screenHeight);
 

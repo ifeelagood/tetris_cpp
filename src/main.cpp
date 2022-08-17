@@ -16,15 +16,14 @@
 #include "keys.h"
 #include "levels.h"
 #include "stb_image.h"
-#include "textures.h"
+#include "renderer.h"
 
 Board game(BOARD_WIDTH, BOARD_HEIGHT); // 2 hidden rows
 Keys keys;
 
 
-TileTexture tileTex;
-CharsetTextures charTex;
-unsigned int bgTex;
+Renderer renderer;
+
 
 // keyboard functions
 
@@ -65,24 +64,6 @@ void windowSize(int w, int h)
 
 // drawing functions
 
-void drawTexturedQuad(unsigned int &texture, int x1, int x2, int y1, int y2)
-{
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glBegin(GL_QUADS);
-        glTexCoord2i(0, 0); glVertex2i(x1, y1);
-        glTexCoord2i(1, 0); glVertex2i(x2, y1);
-        glTexCoord2i(1, 1); glVertex2i(x2, y2);
-        glTexCoord2i(0, 1); glVertex2i(x1, y2);
-    glEnd();
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-
-}
-
 
 void drawString(int x, int y, void *font, const char* string)
 {
@@ -97,69 +78,6 @@ void drawString(int x, int y, void *font, const char* string)
 void drawUI()
 {
 
-}
-
-void drawBackground()
-{
-    int x1, x2, y1, y2;
-    x1 = 0; x2 = WINDOW_WIDTH;
-    y1 = 0; y2 = WINDOW_HEIGHT;
-
-    drawTexturedQuad(bgTex, x1, x2, y1, y2);
-}
-
-void drawCell(int cellX, int cellY, int variation)
-{
-    int cellSize = TILE_WIDTH;
-
-    int x = cellX * cellSize;
-    int y = (cellY - 2) * cellSize;
-
-    int x1, x2, y1, y2;
-    x1 = x + PF_X1; x2 = x1 + cellSize;
-    y1 = y + PF_Y1; y2 = y1 + cellSize;
-
-    unsigned int color = game.getLevel() % 9; // 10 colors in the pallete
-    unsigned int texture = tileTex.getTexture(color, variation);
-
-    drawTexturedQuad(texture, x1, x2, y1, y2);
-
-}
-
-void drawPile()
-{
-    auto shape = game.getPileShape();
-
-    for (int y = 0; y < shape.size(); y++)
-    {
-        for (int x = 0; x < shape[y].size(); x++)
-        {
-            if (shape[y][x] > 0) { drawCell(x, y, shape[y][x] - 1); }
-        }
-    }
-}
-
-void drawActivePiece()
-{
-    Piece p = game.getPiece();
-
-    if (p.getPieceShape() != Shape::Empty)
-    {
-        auto shape = p.getShape();
-
-        int px = p.getX();
-        int py = p.getY();
-
-
-        for (int y = 0; y < shape.size(); y++)
-        {
-            for (int x = 0; x < shape[y].size(); x++)
-            {
-                // std::cout << shape[y][x];
-                if (shape[y][x] > 0) { drawCell(px+x, py+y, shape[y][x]-1); }
-            }
-        }
-    }
 }
 
 void resize(const int w, const int h)
@@ -211,16 +129,11 @@ void display()
 
     windowSize(width, height);
 
-    drawBackground();
-    drawPile();
-    drawActivePiece();
-    drawUI();
-
     game.update(keys);
+    renderer.render(width, height, game.getPileShape(), game.getPiece(), game.getLevel(), game.getScore(), game.getTopScore(), game.getLinesCleared());
 
     glutSwapBuffers();
 
-    // printf("Time: %f \n", (work_time + sleep_time).count());
     glutPostRedisplay();
 }
 
@@ -253,9 +166,6 @@ void init(int* pargc, char** argv)
     game.calculateCellSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     // generate textures
-    tileTex.generateTextures();
-    charTex.generateTextures();
-    createBGTexture(bgTex);
 }
 
 // main

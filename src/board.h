@@ -29,16 +29,16 @@ private:
     // game variables
     unsigned int level = 0;
     unsigned int score = 0;
+    unsigned int topScore = 10000; // nes tetris default
     unsigned int gravity;
     unsigned int linesCleared;
 
     // dimensions and sizes
-    const unsigned int HiddenRows = 2;
+    const unsigned int HiddenRows = BOARD_HIDDEN;
     unsigned int BoardWidth, BoardHeight;
     unsigned int cellSize;
 
     // state variables
-    bool hasPiece = false;
     bool quit = false;
 
     // ARE / entry delay
@@ -82,6 +82,8 @@ public:
 
     unsigned int getScore() const { return this->score; }
     unsigned int getLevel() const { return this->level; }
+    unsigned int getTopScore() const { return this->topScore; }
+    unsigned int getLinesCleared() const { return this->linesCleared; }
 
     float getFPS() const { return this->timer.getFPS(); }
     Message getMessage() const { return this->msg; }

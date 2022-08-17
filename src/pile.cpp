@@ -1,4 +1,5 @@
 #include "pile.h"
+#include "main.h"
 
 #include <iostream>
 
@@ -53,7 +54,7 @@ void Pile::addPiece(const Piece &p)
 
 bool Pile::isTileEmpty(const int x, const int y)
 {
-    if ( (x < 0 || x > this->w - 1) || (y > this->h - 1) ) { return false; } // is out of bounds then treat as full
+    if ( (x < 0 || x > BOARD_WIDTH - 1) || (y > BOARD_HEIGHT - 1) ) { return false; } // is out of bounds then treat as full
     else { return (this->pile[y][x] == 0); } // else return cell being empty
 }
 

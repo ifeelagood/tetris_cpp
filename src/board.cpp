@@ -9,8 +9,8 @@
 Board::Board(const int w, const int h)
 {
     this->BoardWidth = w;
-    this->BoardHeight = h + this->HiddenRows;
-    this->pile.resize(this->BoardWidth, this->getBoardHeight());
+    this->BoardHeight = h;
+    this->pile.resize(w, h);
 
     this->resetGame();
 }
@@ -36,9 +36,6 @@ void Board::update(Keys const &keys)
         this->spawnPiece();
         if (this->checkPileCollision(this->piece)) { this->msg.set("GAME OVER", 10); this->resetGame(); } // weve topped out
     }
-
-
-    // IO FUNCTIONS
 
     // CANNOT CHARGE SOFTDROP/GRAVITY/ROTATION WHILE NO PIECE
     if (this->piece.getPieceShape() != Shape::Empty)
@@ -137,7 +134,7 @@ bool Board::checkPileCollision(Piece const &p)
             int x = dx + px;
             int y = dy + py;
 
-            if (s[dy][dx] > 0 && this->pile.getPile()[y][x] != 0)
+            if (s[dy][dx] > 0 && this->pile.getPile()[y][x] > 0)
             {
                 return true;
             }
@@ -162,7 +159,7 @@ bool Board::outOfBounds(Piece const &p)
 
             if (s[dy][dx] > 0)
             {
-                if (x < 0 || x >= this->BoardWidth || y >= this->BoardHeight) { return true; }
+                if (x < 0 || x >= this->BoardHeight || y >= BOARD_HEIGHT) { return true; }
             }
         }
     }
@@ -235,7 +232,6 @@ bool Board::isLanded()
             }
         }
     }
-
     return false;
 }
 

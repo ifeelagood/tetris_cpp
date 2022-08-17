@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <iostream>
 
 enum class Shape{L,T,Z,S,I,J,O,Empty};
 

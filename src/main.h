@@ -5,7 +5,8 @@
 #define WINDOW_WIDTH 256 * WINDOW_SCALE
 #define WINDOW_HEIGHT 224 * WINDOW_SCALE
 #define BOARD_WIDTH 10
-#define BOARD_HEIGHT 20
+#define BOARD_HEIGHT 21
+#define BOARD_HIDDEN 1
 #define TILE_WIDTH 8 * WINDOW_SCALE
 
 // playfield bounds

@@ -12,7 +12,7 @@ PieceFactory::PieceFactory()
 
 Piece PieceFactory::createPiece(const Shape& s, const Color& c) const
 {
-	Piece p = Piece(5, 2);
+	Piece p = Piece(5, 1);
     p.setColor(c);
     p.setPieceShape(s);
 

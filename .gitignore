@@ -1,5 +1,7 @@
 .vscode
+.cache
 gmon.out
 gprof.out
 obj/*
 bin/*
+build/*

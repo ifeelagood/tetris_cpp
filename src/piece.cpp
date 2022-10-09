@@ -1,68 +1,61 @@
 #include "piece.h"
+
+#include "tetris.h"
 #include <algorithm>
 
-int Piece::IDs = 0;
 
-Piece& Piece::operator=(Piece const &other)
+Matrix getMatrixFromType(Tetromino minoType)
 {
-    if (this != &other)
-    {
-        this->id    = other.id;
-        this->x     = other.x;
-        this->y     = other.y;
-        this->shape = other.shape;
-        this->pieceShape = other.pieceShape;
-    }
-
-    return *this;
+    return MinoMatrix[minoType];
 }
 
-
-void Piece::translate(int dx, int dy)
+Piece::Piece(Tetromino minoType)
 {
-    this->x += dx;
-    this->y += dy;
+    this->minoType = minoType;
+    this->matrix = getMatrixFromType(minoType);
+    this->x = MinoPositions[minoType].first;
+    this->y = MinoPositions[minoType].second;
+
+    this->x += (PILE_WIDTH / 2) - 1;
+    // this->y -= 1;
 }
 
-// thank you to https://stackoverflow.com/a/8664879/19093477 for this algorithm!
-void Piece::rotateLeft()
+// helper functions for rotation
+void transpose(Matrix &matrix)
 {
-    std::vector<std::vector<int>> rotatedShape{shape};
-
-    // 1. Transpose
-    for (int y = 0; y < this->shape.size(); y++)
+    for (unsigned int y = 0; y < matrix.size(); y++)
     {
-        for (int x = 0; x < this->shape[y].size(); x++)
+        for (unsigned int x = y; x < matrix[y].size(); x++)
         {
-            rotatedShape[x][y] = this->shape[y][x];
+            std::swap(matrix[y][x], matrix[x][y]);
         }
     }
+}
 
-    // 2. Reverse rows
-    std::reverse(rotatedShape.begin(), rotatedShape.end());
+void reverseColumns(Matrix &matrix)
+{
+    for (unsigned int y = 0; y < (unsigned int) matrix.size(); y++)
+    {
+        std::reverse(matrix[y].begin(), matrix[y].end());
+    }
+}
+
+void reverseRows(Matrix &matrix)
+{
+    std::reverse(matrix.begin(), matrix.end());
+}
 
 
-    this->setShape(rotatedShape);
+// Left rotation:   transpose -> row reverse
+// Right rotation:  transpose -> col reverse
+void Piece::rotateLeft()
+{
+    transpose(this->matrix);
+    reverseRows(this->matrix);
 }
 
 void Piece::rotateRight()
 {
-    std::vector<std::vector<int>> rotatedShape{shape};
-
-    // 1. Transpose
-    for (int y = 0; y < this->shape.size(); y++)
-    {
-        for (int x = 0; x < this->shape[y].size(); x++)
-        {
-            rotatedShape[x][y] = this->shape[y][x];
-        }
-    }
-
-    // 2. Reverse Columns
-    for (int y = 0; y < this->shape.size(); y++)
-    {
-        std::reverse(rotatedShape[y].begin(), rotatedShape[y].end());
-    }
-
-    this->setShape(rotatedShape);
+    transpose(this->matrix);
+    reverseColumns(this->matrix);
 }

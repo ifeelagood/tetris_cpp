@@ -1,38 +1,26 @@
 #pragma once
 
-#include <vector>
+#include "common.h"
 #include "piece.h"
-
 
 class Pile
 {
 private:
-    unsigned int w,h;
-    std::vector<std::vector<int>> pile;
+    Matrix pile;
+    void resize();
 
+    bool isRowFull(int y);
+    void clearRow(int y);
 
 public:
     // CONSTRUCTORS
-    Pile() {};
-    Pile(const int w, const int h);
+    Pile();
     ~Pile() {};
 
-    // RESIZE FUNCTION
-    void resize(const int w, const int h);
+    Matrix getMatrix() const { return this->pile; };
+    bool isCellOccupied(int x, int y) const { return this->pile[y][x] > 0; };
 
-
-    // GETTERS
-    int getPileWidth()  const { return this->w; }
-    int getPileHeight() const { return this->h; }
-    std::vector<std::vector<int>> getPile() const { return pile; };
-
-    bool isRowFull(const int y);
-
-    void clearRow(const int y);
-    void addPiece(const Piece &p);
-    void clear();
-
-    bool isTileEmpty(const int x, const int y);
-
-
+    unsigned char clearRows(); // clears rows and returns number of rows cleared
+    void addPiece(const Piece &p); // adds a Piece object to the pile
+    void clear(); // clears the pile. duh
 };

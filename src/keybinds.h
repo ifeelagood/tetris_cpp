@@ -1,0 +1,13 @@
+#ifndef KEYBINDS_H
+#define KEYBINDS_H
+
+// movement
+#define KEY_MOVE_LEFT GLFW_KEY_LEFT
+#define KEY_MOVE_RIGHT GLFW_KEY_RIGHT
+#define KEY_MOVE_DOWN GLFW_KEY_DOWN
+
+// rotation
+#define KEY_ROTATE_RIGHT GLFW_KEY_Z
+#define KEY_ROTATE_LEFT GLFW_KEY_X
+
+#endif // KEYBINDS_H

@@ -1,259 +1,138 @@
 #include "board.h"
-#include "main.h"
-#include "das.h"
-#include "levels.h"
+#include "common.h"
 #include "piece.h"
-#include <iostream>
+#include "tetris.h"
+
+#include <vector>
+#include <algorithm>
 
 
-Board::Board(const int w, const int h)
-{
-    this->BoardWidth = w;
-    this->BoardHeight = h;
-    this->pile.resize(w, h);
 
-    this->resetGame();
-}
-
-void Board::levelUp()
-{
-    this->level++;
-    this->gravity = LevelGravity[this->level];
-
-    this->msg.set("LEVEL UP", 10);
-}
-
-void Board::update(Keys const &keys)
-{
-    // increment timer and counter
-    this->timer.tick();
-    this->counter.tick();
-
-    // spawn new piece + check for top out
-    if (this->ARE) { this->ARE--; } // decrement are until zero
-    else if (this->piece.getPieceShape() == Shape::Empty)
-    {
-        this->spawnPiece();
-        if (this->checkPileCollision(this->piece)) { this->msg.set("GAME OVER", 10); this->resetGame(); } // weve topped out
-    }
-
-    // CANNOT CHARGE SOFTDROP/GRAVITY/ROTATION WHILE NO PIECE
-    if (this->piece.getPieceShape() != Shape::Empty)
-    {
-        // soft drop and move piece down
-        if (keys.down & (counter.get() % 2 == 0))    { this->lowerActivePiece(); score++; } // TODO fix this scoring
-        else if (counter.get() % this->gravity == 0) { this->lowerActivePiece(); }
-
-        if (this->oldKeys.z == 0 && keys.z == 1) { this->rotatePieceRight(); }
-        if (this->oldKeys.x == 0 && keys.x == 1) { this->rotatePieceLeft(); }
-
-    }
-
-    // DAS, however, can be charged during ARE
-    // if left or right are down, but not both (as left and right translation do nothing)
-    this->das.update(this->oldKeys, keys);
-    if (keys.left ^ keys.right)
-    {
-        // if das is ready for movement
-        if (this->das.isReady())
-        {
-            if (keys.left ) { this->translatePiece(-1, 0);  }
-            if (keys.right) { this->translatePiece(1, 0);   }
-        }
-    }
-
-    // done processing input, so copy keys to this->oldKeys
-    this->oldKeys = keys;
-
-    // clear complete rows
-    int cleared = 0; // 4 is tetris!
-    for (int y = 0; y < this->pile.getPileHeight(); y++)
-    {
-        if (this->pile.isRowFull(y))
-        {
-            this->pile.clearRow(y);
-            cleared++;
-        }
-    }
-    if (cleared == 4) { this->msg.set("TETRIS", 5); }
-    this->linesCleared += cleared;
-
-    // update score
-    this->score += LineScore[cleared] * (this->level + 1);
-
-    // check for a level up
-    if (this->linesCleared > (this->level + 1) * 10) { this->levelUp(); }
-
-    // update status
-    this->msg.tick();
-}
-
-void Board::resetGame()
+void BoardManager::reset()
 {
     this->pile.clear();
-    this->pieceFactory.resetBag();
+    this->activePiece = Piece();
+}
 
-    this->score = 0;
-    this->linesCleared = 0;
-    this->level = 0;
-    this->gravity = LevelGravity[level];
+bool BoardManager::isColliding(Piece const& p)
+{
+    // check if piece is colliding with pile OR
+    // if piece is colliding with left/right wall or the bottom
 
-    this->spawnPiece();
+    Matrix pieceShape = p.getMatrix();
+    Matrix pileShape = this->pile.getMatrix();
+
+    for (unsigned int y = 0; y < (unsigned int) pieceShape.size(); y++)
+    {
+        for (unsigned int x = 0; x < (unsigned int) pieceShape[y].size(); x++)
+        {
+            if (pieceShape[y][x] > 0)
+            {
+                // IF OOB
+                if ((p.y + y) >= PILE_HEIGHT || (p.x + x) < 0 || (p.x + x) >= PILE_WIDTH)
+                {
+                    return true;
+                }
+                // IF COLLIDING WITH PILE
+                if ((p.y + y) >= 0 && pileShape[p.y + y][p.x + x] > 0)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 
-bool Board::canTransform(Piece const &deltaPiece)
+// movement / rotation functions are just proxies, which only allow movement when its possible
+void BoardManager::moveActiveLeft()
 {
-    if (this->outOfBounds(deltaPiece))
+    Piece deltaPiece = this->activePiece;
+    deltaPiece.x -= 1;
+
+    if (!this->isColliding(deltaPiece))
     {
-        return false;
+        this->activePiece = deltaPiece;
     }
-    else if (this->checkPileCollision(deltaPiece))
+}
+
+void BoardManager::moveActiveRight()
+{
+    Piece deltaPiece = this->activePiece;
+    deltaPiece.x += 1;
+
+    if (!this->isColliding(deltaPiece))
     {
-        return false;
+        this->activePiece = deltaPiece;
     }
-    else
+}
+
+void BoardManager::moveActiveDown()
+{
+    Piece deltaPiece = this->activePiece;
+    deltaPiece.y += 1;
+
+    if (!this->isColliding(deltaPiece))
+    {
+        this->activePiece = deltaPiece;
+    }
+}
+
+void BoardManager::rotateActiveLeft()
+{
+    Piece deltaPiece = this->activePiece;
+    deltaPiece.rotateLeft();
+    if (!this->isColliding(deltaPiece))
+    {
+        this->activePiece = deltaPiece;
+    }
+
+}
+
+
+void BoardManager::rotateActiveRight()
+{
+    Piece deltaPiece = this->activePiece;
+    deltaPiece.rotateRight();
+    if (!this->isColliding(deltaPiece))
+    {
+        this->activePiece = deltaPiece;
+    }
+}
+
+// isLanded checks if active piece when moved down is colliding with pile or bottom
+
+bool BoardManager::isLanded()
+{
+    Piece deltaPiece = this->activePiece;
+    deltaPiece.y += 1;
+
+    return (this->isColliding(deltaPiece) || deltaPiece.y >= PILE_HEIGHT);
+}
+
+bool BoardManager::lockPiece()
+{
+    // check for top out
+    if (this->isColliding(this->activePiece))
     {
         return true;
     }
-
-    // return (!this->outOfBounds(deltaPiece) & !this->checkPileCollision(deltaPiece)); // <- fucked
-}
-
-bool Board::checkPileCollision(Piece const &p)
-{
-	auto s = p.getShape();
-
-    int px = p.getX();
-    int py = p.getY();
-
-    for (int dy = 0; dy < s.size(); dy++)
-    {
-        for (int dx = 0; dx < s[dy].size(); dx++)
-        {
-            int x = dx + px;
-            int y = dy + py;
-
-            if (s[dy][dx] > 0 && this->pile.getPile()[y][x] > 0)
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool Board::outOfBounds(Piece const &p)
-{
-	auto s = p.getShape();
-
-    int px = p.getX();
-    int py = p.getY();
-
-    for (int dy = 0; dy < s.size(); dy++)
-    {
-        for (int dx = 0; dx < s[dy].size(); dx++)
-        {
-            int x = dx + px;
-            int y = dy + py;
-
-            if (s[dy][dx] > 0)
-            {
-                if (x < 0 || x >= this->BoardHeight || y >= BOARD_HEIGHT) { return true; }
-            }
-        }
-    }
-    return false;
-}
-
-bool Board::translatePiece(const int dx, const int dy)
-{
-    Piece deltaPiece = this->piece;
-
-    deltaPiece.translate(dx, dy);
-
-    if (this->canTransform(deltaPiece)) { this->piece = deltaPiece; return true; }
-    else {  return false; }
-}
-
-bool Board::rotatePieceRight()
-{
-    Piece deltaPiece = this->piece;
-
-    deltaPiece.rotateRight();
-
-    if (this->canTransform(deltaPiece)) { this->piece = deltaPiece; return true; }
-    else { return false; }
-}
-
-bool Board::rotatePieceLeft()
-{
-    Piece deltaPiece = this->piece;
-
-    deltaPiece.rotateLeft();
-
-    if (this->canTransform(deltaPiece)) { this->piece = deltaPiece; return true; }
-    else { return false; }
-}
-
-void Board::lowerActivePiece()
-{
-    if (this->isLanded())
-    {
-        pile.addPiece(this->piece);
-        calculateARE(this->piece.getY()); // TODO fix this shit. this gets y value for entire piece.
-        this->piece.setPieceShape(Shape::Empty); // dont actually clear shape, just set it as empty
-    }
     else
     {
-        this->piece.translate(0, 1);
+        this->pile.addPiece(this->activePiece);
+        return false;
     }
 }
 
-bool Board::isLanded()
+unsigned char BoardManager::clearLines()
 {
-    // dont get delta piece as we need not apply the transformation
-    auto pieceShape = this->piece.getShape();
-    auto pileShape = this->pile.getPile();
-
-    int px = this->piece.getX();
-    int py = this->piece.getY();
-
-    for (int sy = 0; sy < pieceShape.size(); sy++)
-    {
-        for (int sx = 0; sx < pieceShape[sy].size(); sx++)
-        {
-            int x = sx + px; // global x coord
-            int y = sy + py; // global y coord
-
-            if (pieceShape[sy][sx] > 0)
-            {
-                if (!this->pile.isTileEmpty(x, y+1)) { return true; }
-            }
-        }
-    }
-    return false;
+    unsigned char linesCleared = this->pile.clearRows();
+    return linesCleared;
 }
 
-void Board::spawnPiece()
+void BoardManager::setActivePiece(Piece p)
 {
-    this->piece = this->pieceFactory.getPiece();
-}
-
-void Board::calculateCellSize(const  int screenWidth, const  int screenHeight)
-{
-    int dw = screenWidth / this->BoardWidth;
-    int dh = screenHeight / (this->BoardHeight - this->HiddenRows);
-
-    // choose smaller
-    if (dw < dh) { this->cellSize = dw; }
-    else { this->cellSize = dh; }
-}
-
-void Board::calculateARE(int row)
-{
-    // from tetris wiki
-    // delay is 10 for bottom 2 rows, then additional 2 for each 4 rows up.
-    int deltaRow = this->BoardHeight - row + 1;
-    this->ARE = 10 + (((deltaRow - 2) / 4) * 2);
+    this->activePiece = p;
 }

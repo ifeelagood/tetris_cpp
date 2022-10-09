@@ -34,3 +34,4 @@ static std::map<unsigned int, unsigned int>LineScore = {
     {3, 300},
     {4, 1200}
 };
+

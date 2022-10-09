@@ -1,21 +1,21 @@
 #include "renderer.h"
+#include "common.h"
+#include "piece.h"
+#include "pile.h"
+#include "tetris.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-// opengl headers for textures and such.
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/freeglut_std.h>
+#include <stb/stb_image.h>
 
 #include <iostream>
 #include <string>
 
-#include "main.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 Renderer::Renderer()
 {
-    // ############# ALLOCATION ############################
     // allocate raw buffer and bg
     buffer = new unsigned char[bpp * bgWidth * bgHeight];
     backgroundData = new unsigned char[bpp * bgWidth * bgHeight];
@@ -36,8 +36,8 @@ Renderer::Renderer()
         }
     }
 
-    // initialse data vectors
-    this->initData();
+    // initialse resources
+    this->initialiseResources();
 }
 
 Renderer::~Renderer()
@@ -57,7 +57,8 @@ Renderer::~Renderer()
     }
 }
 
-void Renderer::initData()
+
+void Renderer::initialiseResources()
 {
     // load all images into arrays
     int w, h, comp; // only needed for stbi_load
@@ -66,9 +67,9 @@ void Renderer::initData()
     unsigned char* rawBackgroundData = stbi_load(bgPath.c_str(), &w, &h, &comp, STBI_rgb);
 
     // ########## TILESET ##########
-    for (int y = 0; y < palleteHeight; y++)
+    for (unsigned int y = 0; y < palleteHeight; y++)
     {
-        for (int x = 0; x < palleteWidth; x++)
+        for (unsigned int x = 0; x < palleteWidth; x++)
         {
             // create pointers for source and dest
             unsigned char * src_ptr = rawTileset;
@@ -78,7 +79,7 @@ void Renderer::initData()
             src_ptr += (y * bpp * tileWidth * tileHeight * palleteWidth) + (x * bpp * tileWidth);
 
             // go row by row and copy from source into pallete vector
-            for (int i = 0; i < tileHeight; i++)
+            for (unsigned int i = 0; i < tileHeight; i++)
             {
                 memcpy(dst_ptr, src_ptr, bpp * tileWidth); // copy pixel row from src_ptr -> dst_ptr
 
@@ -90,7 +91,7 @@ void Renderer::initData()
     }
 
     // ########## CHARSET ##########
-    for (int i = 0; i < charTotal; i++)
+    for (unsigned int i = 0; i < charTotal; i++)
     {
         // basically the same as above, assuming charset tiles are same dim as tileset
         unsigned char * src_ptr = rawCharset;
@@ -98,7 +99,7 @@ void Renderer::initData()
 
         src_ptr += i * tileWidth * bpp;
 
-        for (int j = 0; j < tileHeight; j++)
+        for (unsigned int j = 0; j < tileHeight; j++)
         {
             memcpy(dst_ptr, src_ptr, bpp * tileWidth);
 
@@ -117,37 +118,68 @@ void Renderer::initData()
     stbi_image_free(rawBackgroundData);
 }
 
-void Renderer::render(unsigned int windowWidth, unsigned int windowHeight, std::vector<std::vector<int>> const &pile, Piece const &piece, unsigned int level, unsigned int score, unsigned int topScore, unsigned int linesCleared)
+void Renderer::clearBuffer()
 {
-    std::vector<std::vector<int>> tiles = pile;
+    // copy background to buffer
+    memcpy(buffer, backgroundData, bgWidth * bgHeight * bpp);
+}
 
+void Renderer::blitPlayfield(Pile const& pile, Piece const& activePiece, unsigned int level)
+{
+    Matrix renderTiles = pile.getMatrix();
 
-    // remove hidden rows
-    // tiles.erase(tiles.begin(), tiles.begin() + BOARD_HIDDEN);
-
-    // add piece to tiles
-    if (piece.getPieceShape() != Shape::Empty)
+    // add active piece to tiles
+    if (activePiece.getType() != Tetromino::Empty)
     {
-        auto pieceTiles = piece.getShape();
+        Matrix pieceMatrix = activePiece.getMatrix();
 
-        for (int y = 0; y < pieceTiles.size(); y++)
+        for (unsigned int y = 0; y < pieceMatrix.size(); y++)
         {
-            for (int x = 0; x < pieceTiles[y].size(); x++)
+            for (unsigned int x = 0; x < pieceMatrix[y].size(); x++)
             {
-                int px = x + piece.getX();
-                int py = y + piece.getY();
-
-                if (pieceTiles[y][x] > 0 && py >= 0)
+                if (pieceMatrix[y][x] > 0 && activePiece.y >= 0)
                 {
-                    tiles[py][px] = pieceTiles[y][x];
+                    renderTiles[activePiece.y + y][activePiece.x + x] = pieceMatrix[y][x];
                 }
             }
         }
     }
 
-    // blit tiles to screen
-    drawTiles(tiles, level);
+    unsigned int color = level % palleteHeight;
+    unsigned int variant;
 
+    const unsigned int playfieldStart = (playfield_y1 * bpp * bgWidth) + (playfield_x1 * bpp);
+
+    for (int y = 0; y < PILE_HEIGHT - PILE_HIDDEN; y++)
+    {
+        for (int x = 0; x < PILE_WIDTH; x++)
+        {
+            if (renderTiles[y + PILE_HIDDEN][x] > 0) // Need to account for hidden row in pile coordinate system
+            {
+                variant = renderTiles[y + PILE_HIDDEN][x] - 1; //  Need to account for hidden row in pile coordinate system
+
+                unsigned char * src_ptr = tilesetData[color][variant];
+                unsigned char * dst_ptr = buffer;
+
+                // move pointer to start of tile
+                dst_ptr += playfieldStart + (y * bpp * tileHeight * bgWidth) + (x * bpp * tileWidth);
+
+                for (unsigned int i = 0; i < tileHeight; i++)
+                {
+                    memcpy(dst_ptr, src_ptr, bpp * tileWidth);
+
+                    src_ptr += bpp * tileWidth;
+                    dst_ptr += bpp * bgWidth;
+                }
+            }
+
+        }
+    }
+}
+
+
+void Renderer::blitUI(Tetromino nextPiece, unsigned int level, unsigned int score, unsigned int topScore, unsigned int linesCleared, bool gameOver)
+{
     // draw score
     drawNumString(score, 6, score_x1, score_y1);
 
@@ -160,53 +192,16 @@ void Renderer::render(unsigned int windowWidth, unsigned int windowHeight, std::
     // draw lines cleared
     drawNumString(linesCleared, 3, cleared_x1, cleared_y1);
 
-    // generate tex
-    generateTexture();
-
-    // draw it
-    drawTexture(windowWidth, windowHeight);
-}
-
-void Renderer::drawTiles(std::vector<std::vector<int>> const &tiles, unsigned int level)
-{
-    // copy background to buffer
-    memcpy(buffer, backgroundData, bgWidth * bgHeight * bpp);
-
-    unsigned int color = level % palleteHeight;
-    unsigned int variant;
-
-    const unsigned int playfieldStart = (playfield_y1 * bpp * bgWidth) + (playfield_x1 * bpp);
-
-    // dont draw board hidden
-    for (int y = 0; y < BOARD_HEIGHT - BOARD_HIDDEN; y++)
+    if (gameOver)
     {
-        for (int x = 0; x < BOARD_WIDTH; x++)
-        {
-            if (tiles[y+1][x] > 0) // y + 1 is tile array position
-            {
-                variant = tiles[y+1][x] - 1; // y + 1 is tile array position
-
-                unsigned char * src_ptr = tilesetData[color][variant];
-                unsigned char * dst_ptr = buffer;
-
-                // move pointer to start of tile
-                dst_ptr += playfieldStart + (y * bpp * tileHeight * bgWidth) + (x * bpp * tileWidth);
-
-                for (int i = 0; i < tileHeight; i++)
-                {
-                    memcpy(dst_ptr, src_ptr, bpp * tileWidth);
-
-                    src_ptr += bpp * tileWidth;
-                    dst_ptr += bpp * bgWidth;
-                }
-            }
-        }
+        // center of BG
+        drawString("GAME OVER", bgWidth / 2 - 9 * 8 / 2 + 8, bgHeight / 2 - 8 / 2);
     }
 }
 
+
 void Renderer::generateTexture()
 {
-
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
 
@@ -219,7 +214,7 @@ void Renderer::generateTexture()
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Renderer::drawTexture(unsigned int w, unsigned int h)
+void Renderer::draw(unsigned int w, unsigned int h)
 {
     int x1 = 0; int x2 = w;
     int y1 = 0; int y2 = h;
@@ -246,7 +241,7 @@ void Renderer::drawCharNumber(unsigned int num, unsigned int x1, unsigned int y1
 
     dst_ptr += (y1 * bpp * bgWidth) + (x1 * bpp);
 
-    for (int i = 0; i < tileHeight; i++)
+    for (unsigned int i = 0; i < tileHeight; i++)
     {
         memcpy(dst_ptr, src_ptr, bpp * tileWidth);
 
@@ -270,16 +265,83 @@ void Renderer::drawNumString(unsigned int num, unsigned int length, unsigned int
     collect_digits(digits, num);
 
     // draw leading zeros
-    for (int i = 0; i < length - digits.size(); i++)
+    for (unsigned int i = 0; i < length - digits.size(); i++)
     {
         drawCharNumber(0, x1, y1);
         x1 += tileWidth;
     }
 
     // draw digits
-    for (int i = 0; i < digits.size(); i++)
+    for (unsigned int i = 0; i < digits.size(); i++)
     {
         drawCharNumber(digits[i], x1, y1);
         x1 += tileWidth;
+    }
+}
+
+void Renderer::drawChar(char c, unsigned int x1, unsigned int y1)
+{
+    // char to ascii to charset offset
+    int ci = (int) c - 55;
+
+    unsigned char * src_ptr = charsetData[ci];
+    unsigned char * dst_ptr = buffer;
+
+    dst_ptr += (y1 * bpp * bgWidth) + (x1 * bpp);
+
+    for (unsigned int i = 0; i < tileHeight; i++)
+    {
+        memcpy(dst_ptr, src_ptr, bpp * tileWidth);
+
+        src_ptr += bpp * tileWidth;
+        dst_ptr += bpp * bgWidth;
+    }
+}
+
+void Renderer::drawString(std::string str, unsigned int x1, unsigned int y1)
+{
+    for (char c: str)
+    {
+        if (c == ' ') { x1 += tileWidth; continue; }
+
+        drawChar(c, x1, y1);
+
+        x1 += tileWidth;
+    }
+}
+
+
+void Renderer::drawNextPiece(Tetromino nextPiece, unsigned int level)
+{
+    const unsigned int nextStart = (next_y1 * bpp * bgWidth) + (next_x1 * bpp);
+
+    unsigned int color = level % 10;
+    unsigned int variant;
+
+    Matrix nextPieceMatrix = getMatrixFromType(nextPiece);
+
+    for (unsigned int y = 0; y < nextPieceMatrix.size(); y++)
+    {
+        for (unsigned int x = 0; x < nextPieceMatrix[y].size(); x++)
+        {
+            if (nextPieceMatrix[y][x] > 0)
+            {
+                variant = nextPieceMatrix[y][x] - 1;
+
+                unsigned char * src_ptr = tilesetData[color][variant];
+                unsigned char * dst_ptr = buffer;
+
+                // move pointer to start of tile
+                dst_ptr += nextStart + (y * bpp * tileHeight * bgWidth) + (x * bpp * tileWidth);
+
+                for (unsigned int i = 0; i < tileHeight; i++)
+                {
+                    memcpy(dst_ptr, src_ptr, bpp * tileWidth);
+
+                    src_ptr += bpp * tileWidth;
+                    dst_ptr += bpp * bgWidth;
+                }
+            }
+        }
     }
 }

@@ -1,178 +1,314 @@
-#include <cstdio>
+#include "tetris.h"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
 #include <iostream>
-#include <chrono>
 #include <thread>
+#include <chrono>
 
-#include <GL/freeglut_std.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
-#include <string>
-#include <type_traits>
-
-#include "main.h"
+#include "common.h"
+#include "bag.h"
 #include "board.h"
-#include "frametimer.h"
-#include "keys.h"
 #include "levels.h"
-#include "stb_image.h"
 #include "renderer.h"
+#include "keys.h"
+#include "keybinds.h"
 
-Board game(BOARD_WIDTH, BOARD_HEIGHT); // 2 hidden rows
-Keys keys;
+#define TARGET_FPS 60.0
+
+// GLFW CALLBACKS
+static void windowSizeCallback(GLFWwindow *window, int w, int h);
+static void keyboardCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
+
+// OPENGL FUNCTIONS
+void updateProjection(GLFWwindow *window, int &width, int &height);
+
+// GAME FUNCTIONS
+void resetGame();
+void spawnNewPiece(); // used at the start of the game as well as when a piece is locked
+void levelUp();
+
+void DAS(); // delay auto shift
+void doGravityDrop(); // moves the piece down via gravity
+void doSoftDrop(); // moves the piece down via softdrop
+void doRotation(); 
 
 
-Renderer renderer;
+// GLOBALS
+KeyManager keyManager; // stores key states and acts as an interface to get pressed,down,etc
+Renderer renderer; // handles rendering and resource manangement
+BoardManager boardManager; // handles board logic, including piece movement, collision, etc
+Bag bag; // bag of tetrominos
 
+unsigned long long frame; // Frame counter
+unsigned char das_l; // left DAS counter
+unsigned char das_r; // right DAS counter
 
-// keyboard functions
+unsigned int topScore = 10000; // NES tetris default
+unsigned int score;
+unsigned int level;
+unsigned int lines;
 
-void keyboardNormalUp(unsigned char key, int x, int y)
+bool gameOver;
+
+// main
+int main()
 {
-    if (key == 'z') { keys.z = 0; }
-    if (key == 'x') { keys.x = 0; }
-}
+    GLFWwindow *window;
 
-void keyboardNormalDown(unsigned char key, int x, int y)
-{
-    if (key == 'z') { keys.z = 1; }
-    if (key == 'x') { keys.x = 1; }
-}
-
-void keyboardSpecialUp(int key, int x, int y)
-{
-    if (key == GLUT_KEY_LEFT ) { keys.left  = 0; }
-    if (key == GLUT_KEY_RIGHT) { keys.right = 0; }
-    if (key == GLUT_KEY_DOWN ) { keys.down  = 0; }
-}
-
-void keyboardSpecialDown(int key, int x, int y)
-{
-    if (key == GLUT_KEY_LEFT ) { keys.left  = 1; }
-    if (key == GLUT_KEY_RIGHT) { keys.right = 1; }
-    if (key == GLUT_KEY_DOWN ) { keys.down  = 1; }
-}
-
-// window and display functions
-void windowSize(int w, int h)
-{
-    glViewport(0, 0, w, h);
-    // glLoadIdentity();
-    // gluOrtho2D(0, w, h, 0);
-}
-
-
-// drawing functions
-
-
-void drawString(int x, int y, void *font, const char* string)
-{
-    const unsigned char* c = reinterpret_cast<const unsigned char*>(string);
-
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glRasterPos2i(x, y);
-
-    glutBitmapString(font, c);
-}
-
-void drawUI()
-{
-
-}
-
-void resize(const int w, const int h)
-{
-    glutReshapeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
-    // windowSize(w, h);
-    // game.calculateCellSize(w, h);
-}
-
-
-std::chrono::system_clock::time_point a = std::chrono::system_clock::now();
-std::chrono::system_clock::time_point b = std::chrono::system_clock::now();
-
-void fpsLimit()
-{
-    // ###########THE GREAT FPS LIMITER##########################################################################
-    a = std::chrono::system_clock::now();                                                                    // #
-    std::chrono::duration<double, std::milli> work_time = a - b;                                             // #
-                                                                                                             // #
-    double target = ((1.0 / (double) FPS) * 1000.0);                                                         // #
-    if (work_time.count() < target)                                                                          // #
-    {                                                                                                        // #
-        std::chrono::duration<double, std::milli> delta_ms(target - work_time.count());
-        auto delta_ms_duration = std::chrono::duration_cast<std::chrono::milliseconds>(delta_ms);
-        std::this_thread::sleep_for(std::chrono::milliseconds(delta_ms_duration.count()));
+    if (!glfwInit())
+    {
+        std::cerr << "Failed to initialize GLFW\n";
+        return -1;
     }
 
-    b = std::chrono::system_clock::now();
-    // std::chrono::duration<double, std::milli> sleep_time = b - a;
-    // #########################################################################################################
+    window = glfwCreateWindow(640, 480, "Tetris", NULL, NULL);
+    if (!window)
+    {
+        std::cerr << "Failed to create GLFW window\n";
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+
+    glfwSetKeyCallback(window, keyboardCallback);
+    glfwSetWindowSizeCallback(window, windowSizeCallback);
+
+    // initialize glew
+    if (!gladLoadGL(glfwGetProcAddress))
+    {
+        std::cerr << "Failed to initialize OpenGL context\n";
+        glfwTerminate();
+        return -1;
+    }
+
+    double targetFrameTime = 1.0 / TARGET_FPS;
+
+    // initialise game
+    resetGame();
+
+    // main game loop
+    while (!glfwWindowShouldClose(window))
+    {
+        double startTime = glfwGetTime(); // needed for framerate limiting
+
+        // update game logic
+        DAS();
+        doGravityDrop();
+        doSoftDrop();
+        doRotation();
+
+        levelUp();
+
+        // prepare next frame as a texture
+        renderer.clearBuffer();
+        renderer.blitPlayfield(boardManager.getPile(), boardManager.getActivePiece(), level);
+        renderer.blitUI(bag.peekNext(), level, score, 10000, lines, gameOver);
+        renderer.generateTexture();
+
+        // update projection 
+        int width, height;
+        updateProjection(window, width, height);
+
+        // draw texture     
+        renderer.draw(width, height);
+
+        // swap buffers
+        glfwSwapBuffers(window);
+
+        // poll events and update keymanager
+        keyManager.update(); // move newKeys to oldKeys
+        glfwPollEvents(); // then poll for new events
+
+        // limit framerate
+        double endTime = glfwGetTime();
+        double frameTime = endTime - startTime;
+        if (frameTime < targetFrameTime)
+        {
+            double sleepTime = targetFrameTime - frameTime;
+            std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime));
+        }
+
+        // Do game over check. After framerate limiter.
+        if (gameOver)
+        {
+            if (score > topScore)
+            {
+                topScore = score;
+            }
+            std::this_thread::sleep_for(std::chrono::duration<double>(5.0));
+            resetGame();
+        }
+
+        frame++;
+    }
 }
 
-// display function
-void display()
+
+// glfw callbacks
+static void windowSizeCallback(GLFWwindow *window, int w, int h)
 {
-    fpsLimit();
+    glViewport(0, 0, w, h);
+}
 
-    const int width = glutGet(GLUT_WINDOW_WIDTH);
-    const int height = glutGet(GLUT_WINDOW_HEIGHT);
+static void keyboardCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_PRESS)
+    {
+        if (key == GLFW_KEY_ESCAPE)
+        {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+        if (key >= 0 && key < 1024)
+        {
+            keyManager.setKey(key, true);
+        }
+    }
 
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    else if (action == GLFW_RELEASE)
+    {
+        if (key >= 0 && key < 1024)
+        {
+            keyManager.setKey(key, false);
+        }
+    }
+}
 
+// opengl function
+void updateProjection(GLFWwindow *window, int &width, int &height)
+{
+    glfwGetFramebufferSize(window, &width, &height);
+    
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0, width, height, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-
-    windowSize(width, height);
-
-    game.update(keys);
-    renderer.render(width, height, game.getPileShape(), game.getPiece(), game.getLevel(), game.getScore(), game.getTopScore(), game.getLinesCleared());
-
-    glutSwapBuffers();
-
-    glutPostRedisplay();
 }
 
-
-
-// initialisation
-void init(int* pargc, char** argv)
+// game functions
+void resetGame()
 {
-    // initialise glut
-    glutInit(pargc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutCreateWindow("Tetris");
-    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+    frame = 0;
+    das_l = 0;
+    das_r = 0;
+    score = 0;
+    level = 0;
+    lines = 0;
+    gameOver = false;
 
-    // set glut callback functions
-    glutDisplayFunc(display);
-    glutKeyboardUpFunc(keyboardNormalUp);
-    glutSpecialUpFunc(keyboardSpecialUp);
-    glutKeyboardFunc(keyboardNormalDown);
-    glutSpecialFunc(keyboardSpecialDown);
-    glutReshapeFunc(resize);
-
-    std::printf("Initialised GLUT\n");
-
-    // get and print rendering device
-    const char * gl_renderer = (const char *) glGetString(GL_RENDERER);
-    std::printf("Using device: '%s\n'", gl_renderer);
-
-    // calculate tile size
-    game.calculateCellSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-
-    // generate textures
+    boardManager.reset();
+    bag.reset();
+    spawnNewPiece();
 }
 
-// main
-int main(int argc, char** argv)
+void spawnNewPiece()
 {
-    init(&argc, argv);
+    Tetromino newMinoShape = bag.getNext();
+    Piece newPiece(newMinoShape);
 
-    // start glut display callback function
-    glutMainLoop();
+    boardManager.setActivePiece(newPiece);
+}
+
+void levelUp()
+{
+    if (lines >= (level + 1) * 10)
+    {
+        level++;
+    }
+}
+
+void DAS()
+{
+    if (! (keyManager.isKeyDown(KEY_MOVE_LEFT) && keyManager.isKeyDown(KEY_MOVE_RIGHT)) )
+    {
+        // reset counter on first key press
+        if (keyManager.isKeyPressed(KEY_MOVE_LEFT))
+        {
+            das_l = 0;
+            boardManager.moveActiveLeft();
+        }
+        else if (keyManager.isKeyDown(KEY_MOVE_LEFT))
+        {
+            das_l++;
+            if (das_l == DAS_INITIAL_DELAY) // if inital delay is met, then set counter back.
+            {
+                das_l = DAS_INITIAL_DELAY - DAS_REPEAT_DELAY;
+                boardManager.moveActiveLeft();
+            }
+        }
+
+        // reset counter on first key press
+        if (keyManager.isKeyPressed(KEY_MOVE_RIGHT))
+        {
+            das_r = 0;
+            boardManager.moveActiveRight();
+        }
+        else if (keyManager.isKeyDown(KEY_MOVE_RIGHT))
+        {
+            das_r++;
+            if (das_r == DAS_INITIAL_DELAY) // if inital delay is met, then set counter back.
+            {
+                das_r = DAS_INITIAL_DELAY - DAS_REPEAT_DELAY;
+                boardManager.moveActiveRight();
+            }
+        }
+    }
+}
+
+void doGravityDrop()
+{
+    if (frame % LevelGravity[level] == 0)
+    {
+        // if piece is landed, check for top out. otherwise, lock it and spawn a new piece
+        if (boardManager.isLanded())
+        {
+            if (boardManager.lockPiece()) // if topped out
+            {
+                gameOver = true;
+            }
+            else 
+            {
+                unsigned char linesCleared = boardManager.clearLines();
+                if (linesCleared > 0)
+                {
+                    score += LineScore[linesCleared] * (level + 1);
+                    lines += linesCleared;
+                }
+                spawnNewPiece();
+            }
+        }
+        else // piece hasnt landed, move down
+        {
+            boardManager.moveActiveDown();
+        }
+    }
+}
+
+void doSoftDrop()
+{
+    if (keyManager.isKeyDown(KEY_MOVE_DOWN))
+    {
+        if (!boardManager.isLanded())
+        {
+            if (frame % 2 == 0)
+            {
+                boardManager.moveActiveDown();
+                score++;
+            }
+        }
+    }
+}
+
+void doRotation()
+{
+    if (keyManager.isKeyPressed(KEY_ROTATE_LEFT))
+    {
+        boardManager.rotateActiveLeft();
+    }
+    if (keyManager.isKeyPressed(KEY_ROTATE_RIGHT))
+    {
+        boardManager.rotateActiveRight();
+    }
 }

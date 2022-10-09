@@ -1,30 +1,22 @@
 #include "pile.h"
-#include "main.h"
+#include "common.h"
+#include "tetris.h"
 
 #include <iostream>
 
-
-void Pile::resize(const int w, const int h)
+Pile::Pile()
 {
-    this->w = w;
-    this->h = h;
-
-    this->pile.resize(h);
-    for (int i = 0; i < h; i++)
+    // set the pile size
+    this->pile.resize(PILE_HEIGHT);
+    for (int i = 0; i < PILE_HEIGHT; i++)
     {
-        this->pile[i].resize(w);
+        this->pile[i].resize(PILE_WIDTH);
     }
 }
 
-Pile::Pile(const int w, const int h)
-{
-    this->resize(w, h);
-}
-
-
 bool Pile::isRowFull(const int y)
 {
-    for (int x = 0; x < this->pile[y].size(); x++)
+    for (unsigned int x = 0; x < (unsigned int) this->pile[y].size(); x++)
     {
         if (this->pile[y][x] == 0) { return false; }
     }
@@ -34,28 +26,18 @@ bool Pile::isRowFull(const int y)
 
 void Pile::addPiece(const Piece &p)
 {
-    int px = p.getX();
-    int py = p.getY();
+    Matrix pieceMatrix = p.getMatrix();
 
-    std::vector<std::vector<int>> shape = p.getShape();
-
-    for (int y = 0; y < (int) shape.size(); y++)
+    for (unsigned int y = 0; y < (unsigned int) pieceMatrix.size(); y++)
     {
-        for (int x = 0; x < (int) shape[y].size(); x++)
+        for (unsigned int x = 0; x < (unsigned int) pieceMatrix[y].size(); x++)
         {
-            // TODO check for out of bounds
-            if (shape[y][x] > 0)
+            if (pieceMatrix[y][x] > 0)
             {
-                this->pile[y + py][x + px] = shape[y][x];
+                this->pile[y + p.y][x + p.x] = pieceMatrix[y][x]; // transform piece matrix to pile matrix
             }
         }
     }
-}
-
-bool Pile::isTileEmpty(const int x, const int y)
-{
-    if ( (x < 0 || x > BOARD_WIDTH - 1) || (y > BOARD_HEIGHT - 1) ) { return false; } // is out of bounds then treat as full
-    else { return (this->pile[y][x] == 0); } // else return cell being empty
 }
 
 void Pile::clear()
@@ -67,9 +49,25 @@ void Pile::clear()
 void Pile::clearRow(const int y)
 {
     this->pile.erase(this->pile.begin() + y);
+    
     // add new empty row
-
-    std::vector<int> newRow(this->w);
+    std::vector<unsigned char> newRow(PILE_WIDTH);
     std::fill(newRow.begin(), newRow.end(), 0);
     this->pile.insert(this->pile.begin(), newRow);
+}
+
+unsigned char Pile::clearRows()
+{
+    unsigned char rowsCleared = 0;
+
+    for (int y = 0; y < PILE_HEIGHT; y++)
+    {
+        if (this->isRowFull(y))
+        {
+            this->clearRow(y);
+            rowsCleared++;
+        }
+    }
+
+    return rowsCleared;
 }

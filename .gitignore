@@ -3,3 +3,4 @@ gmon.out
 gprof.out
 obj/*
 bin/*
+.idea

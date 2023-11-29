@@ -3,10 +3,14 @@
 #include <chrono>
 #include <thread>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
+#endif
+
 #include <GL/freeglut_std.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include <GL/glut.h>
+
 #include <string>
 #include <type_traits>
 
